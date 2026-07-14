@@ -6,6 +6,14 @@
  */
 const SHEET_NAME = 'inputs';
 
+/* Browsers send GET when you open the URL directly — show a status note
+   instead of "Script function not found: doGet". Data arrives via POST only. */
+function doGet() {
+  return ContentService.createTextOutput(
+    'TakeHome analytics endpoint is running. This URL only receives data from the website — nothing to see here.'
+  );
+}
+
 function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.tryLock(5000);
