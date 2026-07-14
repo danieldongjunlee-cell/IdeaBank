@@ -97,6 +97,50 @@
   h1 em { font-style: italic; color: var(--accent); }
   .sub { color: var(--ink-2); max-width: 62ch; margin: 6px 0 26px; }
 
+  /* ---------- tabs ---------- */
+  .tabs { display: flex; gap: 6px; margin-bottom: 18px; border-bottom: 1px solid var(--hairline); }
+  .tab {
+    background: none; border: 0; border-bottom: 2px solid transparent; cursor: pointer;
+    padding: 9px 14px; font: 600 14px/1.2 system-ui, sans-serif; color: var(--muted);
+  }
+  .tab.on { color: var(--accent-ink); border-bottom-color: var(--accent); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* ---------- frequency toggle ---------- */
+  .freq { display: inline-flex; border: 1px solid var(--hairline); border-radius: 999px; overflow: hidden; margin-left: auto; }
+  .freq button {
+    border: 0; background: none; cursor: pointer; padding: 6px 12px;
+    font: 600 12px/1.2 system-ui, sans-serif; color: var(--muted);
+  }
+  .freq button + button { border-left: 1px solid var(--hairline); }
+  .freq button.on { background: var(--accent); color: var(--on-accent, #fff); }
+  .freq button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* ---------- coverage table ---------- */
+  .cov { min-width: 720px; }
+  .cov th {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); padding: 7px 12px 7px 0; vertical-align: bottom; border-top: 0;
+  }
+  .cov td { padding: 9px 12px 9px 0; vertical-align: top; font-size: 13.5px; }
+  .cov td:first-child { font-weight: 600; white-space: nowrap; }
+  .cov td:last-child, .cov th:last-child { text-align: left; white-space: normal; }
+  .cov i { display: block; font-style: normal; font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .pill {
+    display: inline-block; font: 600 11.5px/1 system-ui, sans-serif;
+    border-radius: 999px; padding: 4px 9px; white-space: nowrap;
+  }
+  .pill.y { background: rgba(12,163,12,0.13); color: #0a6b0a; }
+  .pill.p { background: var(--chip-bg); color: var(--chip-ink); }
+  .pill.n { background: rgba(208,59,59,0.12); color: #a32e2e; }
+  :root[data-theme="dark"] .pill.y { color: #4fc44f; }
+  :root[data-theme="dark"] .pill.n { color: #e58080; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .pill.y { color: #4fc44f; }
+    :root:not([data-theme="light"]) .pill.n { color: #e58080; }
+  }
+  #viewHealth a { color: var(--accent-ink); }
+
   /* ---------- panels & inputs ---------- */
   .panel {
     background: var(--surface); border: 1px solid var(--hairline);
@@ -284,9 +328,18 @@
   after-tax income in every state, the exact tax-code sections applied, and how retirement
   contributions change the picture.</p>
 
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab on" id="tabCalc" role="tab" aria-selected="true">Take-home map</button>
+    <button class="tab" id="tabHealth" role="tab" aria-selected="false">Health coverage</button>
+  </div>
+
+  <div id="viewCalc">
   <div class="panel">
     <div class="panel-head">
       <span class="panel-title">Your income</span>
+      <span class="freq" role="group" aria-label="Enter amounts per">
+        <button class="on" data-f="1">Yearly</button><button data-f="12">Monthly</button><button data-f="26">Bi-weekly</button>
+      </span>
       <button class="copy-btn" id="share">Copy shareable link</button>
     </div>
     <div class="inputs">
@@ -460,6 +513,87 @@
   federal taxable income before QBI; it excludes local/city taxes (e.g. NYC, MD counties) and
   state-specific deductions or credits. Washington taxes only capital gains and New Hampshire
   only investment income, so both show as no wage tax.</p>
+  </div><!-- /viewCalc -->
+
+  <div id="viewHealth" hidden>
+    <div class="panel">
+      <div class="panel-title">Medicare coverage by plan type — what's actually covered</div>
+      <p class="nm-sub">Typical 2025 coverage. Specific benefits, copays, and dental/vision
+      allowances vary by carrier, plan, and county — always confirm against your plan's Evidence
+      of Coverage or the <a href="https://www.medicare.gov/plan-compare/" target="_blank" rel="noopener">medicare.gov plan finder</a>.</p>
+      <div style="overflow-x:auto">
+        <table class="cov">
+          <thead>
+            <tr>
+              <th>Treatment</th>
+              <th>Original Medicare (Parts A + B)</th>
+              <th>Medicare Advantage (Part C)</th>
+              <th>Medigap Plan G + Part D</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Hospital inpatient</td>
+              <td><span class="pill p">Partial</span><i>after $1,676 deductible per benefit period</i></td>
+              <td><span class="pill y">Covered</span><i>daily copays per stay</i></td>
+              <td><span class="pill y">Covered</span><i>deductible paid by plan</i></td></tr>
+            <tr><td>Doctor visits &amp; outpatient</td>
+              <td><span class="pill p">Partial</span><i>80% after $257 deductible — no cap</i></td>
+              <td><span class="pill y">Covered</span><i>fixed copays, in network</i></td>
+              <td><span class="pill y">Covered</span><i>after small Part B deductible</i></td></tr>
+            <tr><td>Prescription drugs</td>
+              <td><span class="pill n">Not covered</span><i>requires separate Part D</i></td>
+              <td><span class="pill y">Covered</span><i>usually built in · $2,000/yr cap</i></td>
+              <td><span class="pill y">Covered</span><i>via the paired Part D plan</i></td></tr>
+            <tr><td>Dental — cleanings &amp; X-rays</td>
+              <td><span class="pill n">Not covered</span></td>
+              <td><span class="pill y">Covered</span><i>on most plans</i></td>
+              <td><span class="pill n">Not covered</span><i>unless a separate rider</i></td></tr>
+            <tr><td>Dental — major (crowns, dentures)</td>
+              <td><span class="pill n">Not covered</span></td>
+              <td><span class="pill p">Partial</span><i>annual allowance caps, often $1–3k</i></td>
+              <td><span class="pill n">Not covered</span></td></tr>
+            <tr><td>Vision — exams &amp; glasses</td>
+              <td><span class="pill n">Not covered</span><i>medical eye care only (e.g. cataracts)</i></td>
+              <td><span class="pill y">Covered</span><i>exam + eyewear allowance</i></td>
+              <td><span class="pill n">Not covered</span></td></tr>
+            <tr><td>Hearing exams &amp; aids</td>
+              <td><span class="pill n">Not covered</span></td>
+              <td><span class="pill p">Partial</span><i>copays or allowance per aid</i></td>
+              <td><span class="pill n">Not covered</span></td></tr>
+            <tr><td>Mental health</td>
+              <td><span class="pill p">Partial</span><i>80% after deductible</i></td>
+              <td><span class="pill y">Covered</span><i>fixed copays</i></td>
+              <td><span class="pill y">Covered</span></td></tr>
+            <tr><td>Physical therapy</td>
+              <td><span class="pill p">Partial</span><i>80% after deductible</i></td>
+              <td><span class="pill y">Covered</span><i>copay per visit</i></td>
+              <td><span class="pill y">Covered</span></td></tr>
+            <tr><td>Choice of doctors</td>
+              <td><span class="pill y">Any Medicare provider</span></td>
+              <td><span class="pill p">Network</span><i>HMO/PPO rules, referrals may apply</i></td>
+              <td><span class="pill y">Any Medicare provider</span></td></tr>
+            <tr><td>Out-of-pocket maximum</td>
+              <td><span class="pill n">None</span><i>unlimited exposure</i></td>
+              <td><span class="pill y">Yes</span><i>≤ $9,350 in-network (2025)</i></td>
+              <td><span class="pill y">Effectively minimal</span></td></tr>
+            <tr><td>Foreign travel emergency</td>
+              <td><span class="pill n">Not covered</span></td>
+              <td><span class="pill p">Partial</span><i>some plans</i></td>
+              <td><span class="pill y">Covered</span><i>80% up to $50k lifetime</i></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="nm-sub" style="margin-top:14px"><b>Major Medicare Advantage carriers:</b>
+      UnitedHealthcare, Humana, Aetna (CVS Health), Cigna, Kaiser Permanente, and Blue Cross
+      Blue Shield plans. Their dental, vision, and hearing extras differ plan by plan — two
+      UnitedHealthcare plans in the same city can cover different things, so compare the plan,
+      not the brand.</p>
+    </div>
+    <p class="foot"><b>Educational summary, not insurance advice.</b> Coverage shown is typical
+    of each plan type for 2025 and simplifies many rules (networks, prior authorization, benefit
+    periods). Confirm any benefit with the plan's Evidence of Coverage, your State Health
+    Insurance Assistance Program (SHIP), or medicare.gov before making decisions.</p>
+  </div>
 </div>
 <div id="tip"></div>
 
@@ -697,10 +831,24 @@ function parseMoney(el) {
   return Math.min(v, 50000000);
 }
 
+/* pay frequency: recurring income fields are entered per year, month, or bi-weekly paycheck */
+let freq = 1;
+const FREQ_SUFFIX = { 1: '/ yr', 12: '/ mo', 26: '/ paycheck' };
+const FREQ_FIELDS = { w2: 'W-2 wages', se: '1099 net income', tips: 'Tips received', ot: 'Overtime premium' };
+
+function setFreq(f) {
+  freq = f;
+  document.querySelectorAll('.freq button').forEach(b => b.classList.toggle('on', Number(b.dataset.f) === f));
+  for (const id in FREQ_FIELDS) {
+    document.querySelector(`label[for=${id}]`).textContent = FREQ_FIELDS[id] + ' ' + FREQ_SUFFIX[f];
+  }
+}
+document.querySelectorAll('.freq button').forEach(b => b.addEventListener('click', () => { setFreq(Number(b.dataset.f)); render(); }));
+
 function readInputs() {
   return {
-    w2: parseMoney($('w2')), se: parseMoney($('se')),
-    tips: parseMoney($('tips')), ot: parseMoney($('ot')),
+    w2: parseMoney($('w2')) * freq, se: parseMoney($('se')) * freq,
+    tips: parseMoney($('tips')) * freq, ot: parseMoney($('ot')) * freq,
     ltcg: parseMoney($('ltcg')),
     misc: misc.map(m => ({ t: m.t, v: m.v })),
     status: $('status').value, kids: Number($('kids').value),
@@ -779,7 +927,7 @@ function renderDetail(inp, c, keeps) {
   $('detail').innerHTML = `
     <div class="state-name">${STATES[selected].n}</div>
     <div class="hero">${fmt$(keep)}<span style="font-size:15px;font-weight:400;color:var(--muted)"> cash / yr</span></div>
-    <p class="hero-sub"><b>${fmt$(keep / 12)}</b> per month · effective tax rate <b>${fmtPct(eff)}</b></p>
+    <p class="hero-sub"><b>${fmt$(keep / 12)}</b> per month · <b>${fmt$(keep / 26)}</b> per bi-weekly paycheck · effective tax rate <b>${fmtPct(eff)}</b></p>
     ${c.pretax > 0 ? `<p class="kept-note">+ ${fmt$(c.pretax)} saved pre-tax → you keep ${c.gross ? fmtPct(totalKept / c.gross) : '—'} of gross</p>` : '<p class="kept-note" style="display:none"></p>'}
     <div class="bar" role="img" aria-label="Composition of gross income">
       ${seg(c.fedTax + c.niit, 'var(--seg-fed)')}${seg(st, 'var(--seg-state)')}${seg(c.fica, 'var(--seg-fica)')}${seg(c.seTax, 'var(--seg-se)')}${seg(c.pretax, 'var(--tile-empty)')}${seg(keep, 'var(--seg-keep)')}
@@ -986,16 +1134,19 @@ $('addMisc').addEventListener('click', () => {
 
 /* ---------- shareable link ---------- */
 function writeHash() {
-  const i = readInputs();
-  const parts = ['w2=' + i.w2, 'se=' + i.se, 'fs=' + i.status, 'k=' + i.kids, 'st=' + selected];
-  ['tips', 'ot', 'ltcg', 'k401', 'ira', 'sep'].forEach(key => { if (i[key]) parts.push(key + '=' + i[key]); });
-  if (i.misc.length) parts.push('misc=' + i.misc.map(m => m.t + ':' + m.v).join(','));
-  if (!i.qbi) parts.push('qbi=0');
+  /* store raw field values (as entered) plus the frequency, so links restore exactly */
+  const raw = id => parseMoney($(id));
+  const parts = ['w2=' + raw('w2'), 'se=' + raw('se'), 'fs=' + $('status').value, 'k=' + $('kids').value, 'st=' + selected];
+  if (freq !== 1) parts.push('freq=' + freq);
+  ['tips', 'ot', 'ltcg', 'k401', 'ira', 'sep'].forEach(key => { if (raw(key)) parts.push(key + '=' + raw(key)); });
+  if (misc.length) parts.push('misc=' + misc.map(m => m.t + ':' + m.v).join(','));
+  if (!$('qbi').checked) parts.push('qbi=0');
   return '#' + parts.join('&');
 }
 function readHash() {
   if (!location.hash) return;
   const p = new URLSearchParams(location.hash.slice(1));
+  if ([12, 26].includes(Number(p.get('freq')))) setFreq(Number(p.get('freq')));
   const setMoney = (id, key) => { if (p.has(key)) $(id).value = (Number(p.get(key)) || 0).toLocaleString('en-US'); };
   setMoney('w2', 'w2'); setMoney('se', 'se'); setMoney('k401', 'k401');
   setMoney('ira', 'ira'); setMoney('sep', 'sep');
@@ -1027,6 +1178,20 @@ $('share').addEventListener('click', () => {
 });
 ['status', 'kids'].forEach(id => $(id).addEventListener('change', render));
 $('qbi').addEventListener('change', render);
+/* ---------- tabs ---------- */
+function switchTab(which) {
+  const calc = which === 'calc';
+  $('viewCalc').hidden = !calc;
+  $('viewHealth').hidden = calc;
+  $('tabCalc').classList.toggle('on', calc);
+  $('tabHealth').classList.toggle('on', !calc);
+  $('tabCalc').setAttribute('aria-selected', calc);
+  $('tabHealth').setAttribute('aria-selected', !calc);
+  hideTip();
+}
+$('tabCalc').addEventListener('click', () => switchTab('calc'));
+$('tabHealth').addEventListener('click', () => switchTab('health'));
+
 document.querySelector('.rank-cols').addEventListener('click', e => {
   const go = e.target.dataset && e.target.dataset.go;
   if (go) { selected = go; render(); scrollTo({ top: 0, behavior: 'smooth' }); }
