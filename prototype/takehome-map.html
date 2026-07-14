@@ -1459,7 +1459,7 @@ $('sideList').addEventListener('click', e => {
    Paste your Google Apps Script web-app URL here (setup: analytics/README.md).
    Leave empty to disable ALL collection. Never collects names, emails, or accounts —
    only the anonymous scenario numbers, disclosed in the page footer. */
-const ANALYTICS_ENDPOINT = '';
+const ANALYTICS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwGip83EDtCD5updz1sEVW-na90NKTz7HXDf8EqNNHOROIVuGp3vOEPASgwOcXQVojkDw/exec';
 
 const track = (() => {
   if (!ANALYTICS_ENDPOINT) return () => {};
