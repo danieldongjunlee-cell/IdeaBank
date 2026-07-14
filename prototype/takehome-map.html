@@ -1,0 +1,491 @@
+<title>TakeHome — U.S. After-Tax Income Map</title>
+<style>
+  :root {
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --hairline: #e1e0d9;
+    --ring: rgba(11,11,11,0.10);
+    --accent: #2a78d6;
+    --seg-fed: #2a78d6;
+    --seg-fica: #1baf7a;
+    --seg-se: #eda100;
+    --seg-state: #e34948;
+    --seg-keep: #e1e0d9;
+    --tile-empty: #f0efec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --hairline: #2c2c2a;
+      --ring: rgba(255,255,255,0.12);
+      --accent: #3987e5;
+      --seg-fed: #3987e5;
+      --seg-fica: #199e70;
+      --seg-se: #c98500;
+      --seg-state: #e66767;
+      --seg-keep: #383835;
+      --tile-empty: #262624;
+    }
+  }
+  :root[data-theme="light"] {
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e;
+    --muted: #898781; --hairline: #e1e0d9; --ring: rgba(11,11,11,0.10);
+    --accent: #2a78d6; --seg-fed: #2a78d6; --seg-fica: #1baf7a; --seg-se: #eda100;
+    --seg-state: #e34948; --seg-keep: #e1e0d9; --tile-empty: #f0efec;
+  }
+  :root[data-theme="dark"] {
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7;
+    --muted: #898781; --hairline: #2c2c2a; --ring: rgba(255,255,255,0.12);
+    --accent: #3987e5; --seg-fed: #3987e5; --seg-fica: #199e70; --seg-se: #c98500;
+    --seg-state: #e66767; --seg-keep: #383835; --tile-empty: #262624;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 28px 20px 64px; }
+
+  /* ---------- header ---------- */
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .eyebrow .badge {
+    border: 1px solid var(--hairline); border-radius: 999px;
+    padding: 2px 10px; color: var(--ink-2); letter-spacing: 0.08em;
+  }
+  h1 {
+    margin: 10px 0 4px; font-size: clamp(26px, 4.5vw, 38px);
+    font-weight: 700; letter-spacing: -0.02em; text-wrap: balance;
+  }
+  .sub { color: var(--ink-2); max-width: 60ch; margin: 0 0 26px; }
+
+  /* ---------- inputs ---------- */
+  .panel {
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: 10px; padding: 18px 20px;
+  }
+  .inputs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  @media (max-width: 720px) { .inputs { grid-template-columns: repeat(2, 1fr); } }
+  .field label {
+    display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+  }
+  .field input, .field select {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--hairline);
+    border-radius: 7px; background: var(--page); color: var(--ink);
+    font: inherit; font-variant-numeric: tabular-nums;
+  }
+  .field input:focus, .field select:focus, .tile:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px;
+  }
+  .field .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ---------- layout ---------- */
+  .cols { display: grid; grid-template-columns: 1.35fr 1fr; gap: 20px; margin-top: 20px; align-items: start; }
+  @media (max-width: 880px) { .cols { grid-template-columns: 1fr; } }
+
+  /* ---------- map ---------- */
+  .map-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+  .map-title { font-weight: 600; }
+  .map-note { font-size: 12px; color: var(--muted); }
+  .grid {
+    display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px;
+  }
+  .tile {
+    aspect-ratio: 1; border: 0; border-radius: 4px; padding: 0;
+    background: var(--tile-empty);
+    display: flex; align-items: center; justify-content: center;
+    font: 600 clamp(8px, 1.4vw, 12px)/1 system-ui, sans-serif;
+    color: var(--ink-2); cursor: pointer;
+    transition: transform 80ms ease;
+  }
+  @media (prefers-reduced-motion: reduce) { .tile { transition: none; } }
+  .tile:hover { transform: scale(1.12); }
+  .tile.sel { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+  .tile.spacer { visibility: hidden; }
+  .legend { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 12px; color: var(--ink-2); }
+  .legend .ramp { display: flex; flex: 0 0 auto; }
+  .legend .ramp i { width: 22px; height: 10px; display: block; }
+  .legend .ramp i:first-child { border-radius: 3px 0 0 3px; }
+  .legend .ramp i:last-child { border-radius: 0 3px 3px 0; }
+
+  /* ---------- breakdown ---------- */
+  .state-name { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .hero {
+    font-size: clamp(30px, 4vw, 40px); font-weight: 700; letter-spacing: -0.02em;
+    margin: 2px 0 0;
+  }
+  .hero-sub { color: var(--ink-2); font-size: 13px; margin: 2px 0 14px; }
+  .hero-sub b { color: var(--ink); font-weight: 600; }
+  .bar { display: flex; gap: 2px; height: 18px; border-radius: 4px; overflow: hidden; margin: 4px 0 8px; }
+  .bar i { display: block; min-width: 2px; }
+  .bar-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-2); margin-bottom: 14px; }
+  .bar-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .bar-legend em { width: 9px; height: 9px; border-radius: 2px; font-style: normal; display: inline-block; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  td, th { padding: 7px 0; border-top: 1px solid var(--hairline); text-align: left; font-weight: 400; }
+  td:last-child, th:last-child { text-align: right; }
+  tr.total td { font-weight: 700; border-top: 2px solid var(--ink); }
+  td .pct { color: var(--muted); font-size: 12px; margin-left: 6px; }
+
+  /* ---------- ranking ---------- */
+  .rank-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+  @media (max-width: 720px) { .rank-cols { grid-template-columns: 1fr; } }
+  .rank-title { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .rank-row { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--hairline); font-variant-numeric: tabular-nums; }
+  .rank-row button {
+    background: none; border: 0; padding: 0; font: inherit; color: var(--accent);
+    cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+  }
+
+  /* ---------- tooltip / footer ---------- */
+  #tip {
+    position: fixed; pointer-events: none; z-index: 10; display: none;
+    background: var(--ink); color: var(--page); border-radius: 6px;
+    padding: 7px 10px; font-size: 12px; line-height: 1.45; max-width: 220px;
+    font-variant-numeric: tabular-nums;
+  }
+  .foot { margin-top: 28px; font-size: 12px; color: var(--muted); max-width: 78ch; }
+  .foot b { color: var(--ink-2); }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">TakeHome · Prototype <span class="badge">Tax year 2025</span></div>
+  <h1>What do you actually keep, state by state?</h1>
+  <p class="sub">Enter W-2 wages, 1099 self-employment income, or both. The map colors every
+  state by your annual after-tax income — click a state for the full federal + payroll + state breakdown.</p>
+
+  <div class="panel">
+    <div class="inputs">
+      <div class="field">
+        <label for="w2">W-2 wages / yr</label>
+        <input id="w2" type="text" inputmode="numeric" value="85,000" autocomplete="off">
+        <div class="hint">Gross salary before withholding</div>
+      </div>
+      <div class="field">
+        <label for="se">1099 net income / yr</label>
+        <input id="se" type="text" inputmode="numeric" value="15,000" autocomplete="off">
+        <div class="hint">Self-employment profit after expenses</div>
+      </div>
+      <div class="field">
+        <label for="status">Filing status</label>
+        <select id="status">
+          <option value="single" selected>Single</option>
+          <option value="mfj">Married filing jointly</option>
+          <option value="hoh">Head of household</option>
+        </select>
+        <div class="hint">Sets brackets &amp; standard deduction</div>
+      </div>
+      <div class="field">
+        <label for="kids">Children under 17</label>
+        <select id="kids">
+          <option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+        </select>
+        <div class="hint">Child tax credit, $2,200 each</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="panel">
+      <div class="map-head">
+        <span class="map-title">Annual take-home by state</span>
+        <span class="map-note">Click a state to inspect</span>
+      </div>
+      <div class="grid" id="map" role="listbox" aria-label="US states, colored by take-home pay"></div>
+      <div class="legend">
+        <span id="legMin"></span>
+        <span class="ramp" id="legRamp"></span>
+        <span id="legMax"></span>
+        <span style="margin-left:auto">darker = you keep more</span>
+      </div>
+    </div>
+
+    <div class="panel" id="detail"></div>
+  </div>
+
+  <div class="rank-cols">
+    <div class="panel">
+      <div class="rank-title">Most take-home</div>
+      <div id="best"></div>
+    </div>
+    <div class="panel">
+      <div class="rank-title">Least take-home</div>
+      <div id="worst"></div>
+    </div>
+  </div>
+
+  <p class="foot"><b>Prototype — educational estimate, not tax advice.</b> Uses 2025 federal
+  brackets, standard deduction, FICA / self-employment tax (with the Social Security wage-base
+  coordinated across W-2 and 1099 income), additional Medicare tax, and the child tax credit with
+  phase-out. State income tax uses simplified 2025 rate schedules applied to federal taxable income;
+  it excludes local/city taxes (e.g. NYC, MD counties), state-specific deductions and credits,
+  itemized deductions, and retirement contributions. Washington taxes only capital gains and New
+  Hampshire only investment income, so both show as no wage tax.</p>
+</div>
+<div id="tip"></div>
+
+<script>
+'use strict';
+
+/* ---------- federal constants (tax year 2025) ---------- */
+const FED = {
+  single: [[0,.10],[11925,.12],[48475,.22],[103350,.24],[197300,.32],[250525,.35],[626350,.37]],
+  mfj:    [[0,.10],[23850,.12],[96950,.22],[206700,.24],[394600,.32],[501050,.35],[751600,.37]],
+  hoh:    [[0,.10],[17000,.12],[64850,.22],[103350,.24],[197300,.32],[250500,.35],[626350,.37]],
+};
+const STD = { single: 15750, mfj: 31500, hoh: 23625 };
+const SS_WAGE_BASE = 176100;
+const CTC_PER_CHILD = 2200;
+
+/* ---------- states: tile-grid position + simplified 2025 tax model ----------
+   b: single-filer brackets [threshold, rate] (MFJ doubles thresholds); none: no wage tax */
+const STATES = {
+  AK:{n:'Alaska',c:0,r:0,none:1}, ME:{n:'Maine',c:11,r:0,b:[[0,.058],[26050,.0675],[61600,.0715]]},
+  WI:{n:'Wisconsin',c:6,r:1,b:[[0,.035],[14680,.044],[29370,.053],[323290,.0765]]},
+  VT:{n:'Vermont',c:10,r:1,b:[[0,.0335],[47900,.066],[116000,.076],[242000,.0875]]},
+  NH:{n:'New Hampshire',c:11,r:1,none:1},
+  WA:{n:'Washington',c:1,r:2,none:1}, ID:{n:'Idaho',c:2,r:2,b:[[0,.05695]]},
+  MT:{n:'Montana',c:3,r:2,b:[[0,.047],[21100,.059]]}, ND:{n:'North Dakota',c:4,r:2,b:[[0,0],[48475,.0195],[244825,.025]]},
+  MN:{n:'Minnesota',c:5,r:2,b:[[0,.0535],[32570,.068],[106990,.0785],[198630,.0985]]},
+  IL:{n:'Illinois',c:6,r:2,b:[[0,.0495]]}, MI:{n:'Michigan',c:7,r:2,b:[[0,.0425]]},
+  NY:{n:'New York',c:9,r:2,b:[[0,.04],[8500,.045],[11700,.0525],[13900,.055],[80650,.06],[215400,.0685],[1077550,.0965],[5000000,.103],[25000000,.109]]},
+  MA:{n:'Massachusetts',c:10,r:2,b:[[0,.05],[1000000,.09]]}, RI:{n:'Rhode Island',c:11,r:2,b:[[0,.0375],[79900,.0475],[181650,.0599]]},
+  OR:{n:'Oregon',c:1,r:3,b:[[0,.0475],[4400,.0675],[11050,.0875],[125000,.099]]},
+  NV:{n:'Nevada',c:2,r:3,none:1}, WY:{n:'Wyoming',c:3,r:3,none:1}, SD:{n:'South Dakota',c:4,r:3,none:1},
+  IA:{n:'Iowa',c:5,r:3,b:[[0,.038]]}, IN:{n:'Indiana',c:6,r:3,b:[[0,.03]]},
+  OH:{n:'Ohio',c:7,r:3,b:[[0,0],[26050,.0275],[100000,.035]]},
+  PA:{n:'Pennsylvania',c:8,r:3,b:[[0,.0307]]},
+  NJ:{n:'New Jersey',c:9,r:3,b:[[0,.014],[20000,.0175],[35000,.035],[40000,.05525],[75000,.0637],[500000,.0897],[1000000,.1075]]},
+  CT:{n:'Connecticut',c:10,r:3,b:[[0,.02],[10000,.045],[50000,.055],[100000,.06],[200000,.065],[250000,.069],[500000,.0699]]},
+  CA:{n:'California',c:1,r:4,b:[[0,.01],[10756,.02],[25499,.04],[40245,.06],[55866,.08],[70606,.093],[360659,.103],[432787,.113],[721314,.123],[1000000,.133]]},
+  UT:{n:'Utah',c:2,r:4,b:[[0,.0455]]}, CO:{n:'Colorado',c:3,r:4,b:[[0,.044]]},
+  NE:{n:'Nebraska',c:4,r:4,b:[[0,.0246],[4030,.0351],[24120,.0501],[38870,.052]]},
+  MO:{n:'Missouri',c:5,r:4,b:[[0,.02],[9000,.047]]}, KY:{n:'Kentucky',c:6,r:4,b:[[0,.04]]},
+  WV:{n:'West Virginia',c:7,r:4,b:[[0,.0222],[10000,.0296],[25000,.0333],[40000,.0444],[60000,.0482]]},
+  VA:{n:'Virginia',c:8,r:4,b:[[0,.02],[3000,.03],[5000,.05],[17000,.0575]]},
+  MD:{n:'Maryland',c:9,r:4,b:[[0,.02],[1000,.03],[2000,.04],[3000,.0475],[100000,.05],[125000,.0525],[150000,.055],[250000,.0575]]},
+  DE:{n:'Delaware',c:10,r:4,b:[[0,0],[2000,.022],[5000,.039],[10000,.048],[20000,.052],[25000,.0555],[60000,.066]]},
+  AZ:{n:'Arizona',c:2,r:5,b:[[0,.025]]},
+  NM:{n:'New Mexico',c:3,r:5,b:[[0,.015],[5500,.032],[16500,.043],[33500,.047],[66500,.049],[210000,.059]]},
+  KS:{n:'Kansas',c:4,r:5,b:[[0,.052],[23000,.0558]]},
+  AR:{n:'Arkansas',c:5,r:5,b:[[0,.02],[4400,.039]]},
+  TN:{n:'Tennessee',c:6,r:5,none:1},
+  NC:{n:'North Carolina',c:7,r:5,b:[[0,.0425]]},
+  SC:{n:'South Carolina',c:8,r:5,b:[[0,0],[3560,.03],[17830,.062]]},
+  DC:{n:'District of Columbia',c:9,r:5,b:[[0,.04],[10000,.06],[40000,.065],[60000,.085],[250000,.0925],[500000,.0975],[1000000,.1075]]},
+  OK:{n:'Oklahoma',c:4,r:6,b:[[0,.0025],[1000,.0075],[2500,.0175],[3750,.0275],[4900,.0375],[7200,.0475]]},
+  LA:{n:'Louisiana',c:5,r:6,b:[[0,.03]]},
+  MS:{n:'Mississippi',c:6,r:6,b:[[0,.044]]},
+  AL:{n:'Alabama',c:7,r:6,b:[[0,.02],[500,.04],[3000,.05]]},
+  GA:{n:'Georgia',c:8,r:6,b:[[0,.0539]]},
+  HI:{n:'Hawaii',c:0,r:7,b:[[0,.014],[9600,.055],[24000,.064],[36000,.068],[48000,.072],[125000,.09],[175000,.10],[225000,.11]]},
+  TX:{n:'Texas',c:4,r:7,none:1},
+  FL:{n:'Florida',c:9,r:7,none:1},
+};
+
+/* sequential blue ramp, steps 100→700 (validated reference palette) */
+const RAMP = ['#cde2fb','#9ec5f4','#6da7ec','#3987e5','#256abf','#184f95','#0d366b'];
+
+/* ---------- tax engine ---------- */
+function bracketTax(income, brackets) {
+  let tax = 0;
+  for (let i = 0; i < brackets.length; i++) {
+    const lo = brackets[i][0], rate = brackets[i][1];
+    const hi = i + 1 < brackets.length ? brackets[i + 1][0] : Infinity;
+    if (income <= lo) break;
+    tax += (Math.min(income, hi) - lo) * rate;
+  }
+  return tax;
+}
+
+function computeFederal(w2, se, status, kids) {
+  const seBase = se * 0.9235;
+  const ssRoom = Math.max(0, SS_WAGE_BASE - w2);
+  const seTax = Math.min(seBase, ssRoom) * 0.124 + seBase * 0.029;
+  const addlThresh = status === 'mfj' ? 250000 : 200000;
+  const addlMedicare = Math.max(0, w2 + seBase - addlThresh) * 0.009;
+  const fica = Math.min(w2, SS_WAGE_BASE) * 0.062 + w2 * 0.0145 + addlMedicare;
+  const agi = w2 + se - seTax / 2;
+  const taxable = Math.max(0, agi - STD[status]);
+  let ctc = kids * CTC_PER_CHILD;
+  const phaseStart = status === 'mfj' ? 400000 : 200000;
+  if (agi > phaseStart) ctc = Math.max(0, ctc - Math.ceil((agi - phaseStart) / 1000) * 50);
+  const fedTax = Math.max(0, bracketTax(taxable, FED[status]) - ctc);
+  return { fedTax, fica, seTax, taxable };
+}
+
+function stateTax(code, taxable, status) {
+  const s = STATES[code];
+  if (s.none) return 0;
+  const mult = status === 'mfj' ? 2 : 1;
+  const b = s.b.map(x => [x[0] * mult, x[1]]);
+  return bracketTax(taxable, b);
+}
+
+/* ---------- ui ---------- */
+const $ = id => document.getElementById(id);
+const fmt$ = v => '$' + Math.round(v).toLocaleString('en-US');
+const fmtPct = v => (v * 100).toFixed(1) + '%';
+let selected = 'CA';
+
+function parseMoney(el) {
+  const v = Math.max(0, Number(el.value.replace(/[^0-9.]/g, '')) || 0);
+  return Math.min(v, 50000000);
+}
+
+function readInputs() {
+  return {
+    w2: parseMoney($('w2')),
+    se: parseMoney($('se')),
+    status: $('status').value,
+    kids: Number($('kids').value),
+  };
+}
+
+function computeAll() {
+  const { w2, se, status, kids } = readInputs();
+  const gross = w2 + se;
+  const fed = computeFederal(w2, se, status, kids);
+  const rows = {};
+  for (const code in STATES) {
+    const st = stateTax(code, fed.taxable, status);
+    rows[code] = { st, keep: gross - fed.fedTax - fed.fica - fed.seTax - st };
+  }
+  return { gross, fed, rows };
+}
+
+function render() {
+  const r = computeAll();
+  const vals = Object.values(r.rows).map(x => x.keep);
+  const min = Math.min(...vals), max = Math.max(...vals), span = max - min || 1;
+
+  for (const code in STATES) {
+    const t = $('t-' + code);
+    const bin = r.gross === 0 ? 0 : Math.min(6, Math.floor((r.rows[code].keep - min) / span * 7));
+    t.style.background = r.gross === 0 ? 'var(--tile-empty)' : RAMP[bin];
+    t.style.color = r.gross === 0 ? 'var(--ink-2)' : (bin >= 3 ? '#ffffff' : '#0b366b');
+    t.classList.toggle('sel', code === selected);
+    t.setAttribute('aria-selected', code === selected);
+    t.dataset.keep = r.rows[code].keep;
+    t.dataset.st = r.rows[code].st;
+  }
+  $('legMin').textContent = fmt$(min);
+  $('legMax').textContent = fmt$(max);
+
+  renderDetail(r);
+  renderRank(r);
+}
+
+function renderDetail(r) {
+  const { gross, fed } = r;
+  const st = r.rows[selected].st, keep = r.rows[selected].keep;
+  const eff = gross > 0 ? (gross - keep) / gross : 0;
+  const seg = (v, color) => gross > 0 && v > 0.004 * gross
+    ? `<i style="flex:${(v / gross).toFixed(4)};background:${color}"></i>` : '';
+  const line = (label, v) => v > 0 ? `<tr><td>${label}<span class="pct">${gross ? fmtPct(v / gross) : ''}</span></td><td>−${fmt$(v)}</td></tr>` : '';
+
+  $('detail').innerHTML = `
+    <div class="state-name">${STATES[selected].n}</div>
+    <div class="hero">${fmt$(keep)}<span style="font-size:15px;font-weight:400;color:var(--muted)"> / yr</span></div>
+    <p class="hero-sub"><b>${fmt$(keep / 12)}</b> per month · effective tax rate <b>${fmtPct(eff)}</b></p>
+    <div class="bar" role="img" aria-label="Composition of gross income">
+      ${seg(fed.fedTax, 'var(--seg-fed)')}${seg(fed.fica, 'var(--seg-fica)')}${seg(fed.seTax, 'var(--seg-se)')}${seg(st, 'var(--seg-state)')}${seg(keep, 'var(--seg-keep)')}
+    </div>
+    <div class="bar-legend">
+      <span><em style="background:var(--seg-fed)"></em>Federal</span>
+      <span><em style="background:var(--seg-fica)"></em>FICA</span>
+      <span><em style="background:var(--seg-se)"></em>SE tax</span>
+      <span><em style="background:var(--seg-state)"></em>State</span>
+      <span><em style="background:var(--seg-keep)"></em>You keep</span>
+    </div>
+    <table>
+      <tr><td>Gross income</td><td>${fmt$(gross)}</td></tr>
+      ${line('Federal income tax', fed.fedTax)}
+      ${line('FICA (SS + Medicare)', fed.fica)}
+      ${line('Self-employment tax', fed.seTax)}
+      ${STATES[selected].none
+        ? '<tr><td>State income tax</td><td>none</td></tr>'
+        : line('State income tax', st) || '<tr><td>State income tax</td><td>−$0</td></tr>'}
+      <tr class="total"><td>Take-home</td><td>${fmt$(keep)}</td></tr>
+    </table>`;
+}
+
+function renderRank(r) {
+  const order = Object.keys(STATES).sort((a, b) => r.rows[b].keep - r.rows[a].keep);
+  const row = code => `
+    <div class="rank-row">
+      <button data-go="${code}">${STATES[code].n}</button>
+      <span>${fmt$(r.rows[code].keep)}</span>
+    </div>`;
+  $('best').innerHTML = order.slice(0, 5).map(row).join('');
+  $('worst').innerHTML = order.slice(-5).reverse().map(row).join('');
+}
+
+/* ---------- build map ---------- */
+(function buildMap() {
+  const map = $('map');
+  const cells = {};
+  for (const code in STATES) cells[STATES[code].r * 12 + STATES[code].c] = code;
+  for (let i = 0; i < 96; i++) {
+    const code = cells[i];
+    if (!code) {
+      const sp = document.createElement('div');
+      sp.className = 'tile spacer';
+      map.appendChild(sp);
+      continue;
+    }
+    const b = document.createElement('button');
+    b.className = 'tile';
+    b.id = 't-' + code;
+    b.textContent = code;
+    b.setAttribute('role', 'option');
+    b.setAttribute('aria-label', STATES[code].n);
+    b.addEventListener('click', () => { selected = code; render(); });
+    b.addEventListener('mousemove', e => {
+      const tip = $('tip');
+      tip.style.display = 'block';
+      tip.innerHTML = `<b>${STATES[code].n}</b><br>take-home ${fmt$(Number(b.dataset.keep || 0))}<br>state tax ${STATES[code].none ? 'none' : fmt$(Number(b.dataset.st || 0))}`;
+      tip.style.left = Math.min(e.clientX + 14, innerWidth - 240) + 'px';
+      tip.style.top = (e.clientY + 14) + 'px';
+    });
+    b.addEventListener('mouseleave', () => { $('tip').style.display = 'none'; });
+    map.appendChild(b);
+  }
+  const ramp = $('legRamp');
+  RAMP.forEach(hex => {
+    const i = document.createElement('i');
+    i.style.background = hex;
+    ramp.appendChild(i);
+  });
+})();
+
+/* ---------- wire inputs ---------- */
+['w2', 'se'].forEach(id => {
+  $(id).addEventListener('input', render);
+  $(id).addEventListener('blur', () => {
+    const v = parseMoney($(id));
+    $(id).value = v.toLocaleString('en-US');
+  });
+});
+['status', 'kids'].forEach(id => $(id).addEventListener('change', render));
+document.querySelector('.rank-cols').addEventListener('click', e => {
+  const go = e.target.dataset && e.target.dataset.go;
+  if (go) { selected = go; render(); scrollTo({ top: 0, behavior: 'smooth' }); }
+});
+
+render();
+</script>
