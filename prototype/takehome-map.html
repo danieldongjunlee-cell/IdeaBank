@@ -116,30 +116,27 @@
   .freq button.on { background: var(--accent); color: var(--on-accent, #fff); }
   .freq button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-  /* ---------- coverage table ---------- */
-  .cov { min-width: 720px; }
-  .cov th {
-    font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--muted); padding: 7px 12px 7px 0; vertical-align: bottom; border-top: 0;
+  /* ---------- side hustle rankings ---------- */
+  .panel-head select {
+    padding: 8px 11px; border: 1px solid var(--hairline); border-radius: 8px;
+    background: var(--page); color: var(--ink); font: inherit; max-width: 200px;
   }
-  .cov td { padding: 9px 12px 9px 0; vertical-align: top; font-size: 13.5px; }
-  .cov td:first-child { font-weight: 600; white-space: nowrap; }
-  .cov td:last-child, .cov th:last-child { text-align: left; white-space: normal; }
-  .cov i { display: block; font-style: normal; font-size: 12px; color: var(--muted); margin-top: 3px; }
-  .pill {
-    display: inline-block; font: 600 11.5px/1 system-ui, sans-serif;
-    border-radius: 999px; padding: 4px 9px; white-space: nowrap;
+  .sj-row {
+    display: grid; grid-template-columns: 225px 1fr 175px; gap: 14px; align-items: center;
+    padding: 10px 0; border-top: 1px solid var(--hairline);
   }
-  .pill.y { background: rgba(12,163,12,0.13); color: #0a6b0a; }
-  .pill.p { background: var(--chip-bg); color: var(--chip-ink); }
-  .pill.n { background: rgba(208,59,59,0.12); color: #a32e2e; }
-  :root[data-theme="dark"] .pill.y { color: #4fc44f; }
-  :root[data-theme="dark"] .pill.n { color: #e58080; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .pill.y { color: #4fc44f; }
-    :root:not([data-theme="light"]) .pill.n { color: #e58080; }
+  @media (max-width: 720px) {
+    .sj-row { grid-template-columns: 1fr; gap: 5px; }
+    .sj-val { text-align: left; }
   }
-  #viewHealth a { color: var(--accent-ink); }
+  .sj-rank { display: inline-block; width: 1.6em; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .sj-name b { font-size: 13.5px; }
+  .sj-bar { position: relative; height: 16px; }
+  .sj-track { position: absolute; left: 0; right: 0; top: 6px; height: 4px; background: var(--tile-empty); border-radius: 2px; }
+  .sj-range { position: absolute; top: 4px; height: 8px; background: var(--accent); opacity: 0.35; border-radius: 4px; }
+  .sj-avg { position: absolute; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
+  .sj-val { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+  .sj-val a { color: var(--accent-ink); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
 
   /* ---------- panels & inputs ---------- */
   .panel {
@@ -330,7 +327,7 @@
 
   <div class="tabs" role="tablist" aria-label="Sections">
     <button class="tab on" id="tabCalc" role="tab" aria-selected="true">Take-home map</button>
-    <button class="tab" id="tabHealth" role="tab" aria-selected="false">Health coverage</button>
+    <button class="tab" id="tabSide" role="tab" aria-selected="false">Side hustles</button>
   </div>
 
   <div id="viewCalc">
@@ -515,84 +512,25 @@
   only investment income, so both show as no wage tax.</p>
   </div><!-- /viewCalc -->
 
-  <div id="viewHealth" hidden>
+  <div id="viewSide" hidden>
     <div class="panel">
-      <div class="panel-title">Medicare coverage by plan type — what's actually covered</div>
-      <p class="nm-sub">Typical 2025 coverage. Specific benefits, copays, and dental/vision
-      allowances vary by carrier, plan, and county — always confirm against your plan's Evidence
-      of Coverage or the <a href="https://www.medicare.gov/plan-compare/" target="_blank" rel="noopener">medicare.gov plan finder</a>.</p>
-      <div style="overflow-x:auto">
-        <table class="cov">
-          <thead>
-            <tr>
-              <th>Treatment</th>
-              <th>Original Medicare (Parts A + B)</th>
-              <th>Medicare Advantage (Part C)</th>
-              <th>Medigap Plan G + Part D</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>Hospital inpatient</td>
-              <td><span class="pill p">Partial</span><i>after $1,676 deductible per benefit period</i></td>
-              <td><span class="pill y">Covered</span><i>daily copays per stay</i></td>
-              <td><span class="pill y">Covered</span><i>deductible paid by plan</i></td></tr>
-            <tr><td>Doctor visits &amp; outpatient</td>
-              <td><span class="pill p">Partial</span><i>80% after $257 deductible — no cap</i></td>
-              <td><span class="pill y">Covered</span><i>fixed copays, in network</i></td>
-              <td><span class="pill y">Covered</span><i>after small Part B deductible</i></td></tr>
-            <tr><td>Prescription drugs</td>
-              <td><span class="pill n">Not covered</span><i>requires separate Part D</i></td>
-              <td><span class="pill y">Covered</span><i>usually built in · $2,000/yr cap</i></td>
-              <td><span class="pill y">Covered</span><i>via the paired Part D plan</i></td></tr>
-            <tr><td>Dental — cleanings &amp; X-rays</td>
-              <td><span class="pill n">Not covered</span></td>
-              <td><span class="pill y">Covered</span><i>on most plans</i></td>
-              <td><span class="pill n">Not covered</span><i>unless a separate rider</i></td></tr>
-            <tr><td>Dental — major (crowns, dentures)</td>
-              <td><span class="pill n">Not covered</span></td>
-              <td><span class="pill p">Partial</span><i>annual allowance caps, often $1–3k</i></td>
-              <td><span class="pill n">Not covered</span></td></tr>
-            <tr><td>Vision — exams &amp; glasses</td>
-              <td><span class="pill n">Not covered</span><i>medical eye care only (e.g. cataracts)</i></td>
-              <td><span class="pill y">Covered</span><i>exam + eyewear allowance</i></td>
-              <td><span class="pill n">Not covered</span></td></tr>
-            <tr><td>Hearing exams &amp; aids</td>
-              <td><span class="pill n">Not covered</span></td>
-              <td><span class="pill p">Partial</span><i>copays or allowance per aid</i></td>
-              <td><span class="pill n">Not covered</span></td></tr>
-            <tr><td>Mental health</td>
-              <td><span class="pill p">Partial</span><i>80% after deductible</i></td>
-              <td><span class="pill y">Covered</span><i>fixed copays</i></td>
-              <td><span class="pill y">Covered</span></td></tr>
-            <tr><td>Physical therapy</td>
-              <td><span class="pill p">Partial</span><i>80% after deductible</i></td>
-              <td><span class="pill y">Covered</span><i>copay per visit</i></td>
-              <td><span class="pill y">Covered</span></td></tr>
-            <tr><td>Choice of doctors</td>
-              <td><span class="pill y">Any Medicare provider</span></td>
-              <td><span class="pill p">Network</span><i>HMO/PPO rules, referrals may apply</i></td>
-              <td><span class="pill y">Any Medicare provider</span></td></tr>
-            <tr><td>Out-of-pocket maximum</td>
-              <td><span class="pill n">None</span><i>unlimited exposure</i></td>
-              <td><span class="pill y">Yes</span><i>≤ $9,350 in-network (2025)</i></td>
-              <td><span class="pill y">Effectively minimal</span></td></tr>
-            <tr><td>Foreign travel emergency</td>
-              <td><span class="pill n">Not covered</span></td>
-              <td><span class="pill p">Partial</span><i>some plans</i></td>
-              <td><span class="pill y">Covered</span><i>80% up to $50k lifetime</i></td></tr>
-          </tbody>
-        </table>
+      <div class="panel-head">
+        <span class="panel-title">Top side hustles for W-2 employees</span>
+        <select id="sideState" aria-label="State"></select>
       </div>
-      <p class="nm-sub" style="margin-top:14px"><b>Major Medicare Advantage carriers:</b>
-      UnitedHealthcare, Humana, Aetna (CVS Health), Cigna, Kaiser Permanente, and Blue Cross
-      Blue Shield plans. Their dental, vision, and hearing extras differ plan by plan — two
-      UnitedHealthcare plans in the same city can cover different things, so compare the plan,
-      not the brand.</p>
+      <p class="nm-sub">Estimated <b>part-time monthly earnings</b> in
+      <b id="sideStateName"></b> — the bar spans min to max, the dot marks a typical earner.
+      National gig-economy figures scaled to local wage levels; actual results depend on hours
+      and your market.</p>
+      <div id="sideList"></div>
+      <p class="nm-sub" style="margin-top:12px">Tip: <b>see take-home →</b> drops a hustle's
+      typical income into the 1099 field, so you can see what survives self-employment tax.</p>
     </div>
-    <p class="foot"><b>Educational summary, not insurance advice.</b> Coverage shown is typical
-    of each plan type for 2025 and simplifies many rules (networks, prior authorization, benefit
-    periods). Confirm any benefit with the plan's Evidence of Coverage, your State Health
-    Insurance Assistance Program (SHIP), or medicare.gov before making decisions.</p>
+    <p class="foot"><b>Educational estimates, not earnings guarantees.</b> Ranges reflect
+    typical part-time effort (roughly 5–15 hours/week) drawn from national gig-platform earnings
+    reports, scaled by each state's wage index; rankings weight state character (urban, tourism,
+    rural). Side-gig income is 1099 self-employment income — the calculator tab applies SE tax,
+    the QBI deduction, and state tax to it.</p>
   </div>
 </div>
 <div id="tip"></div>
@@ -1178,19 +1116,98 @@ $('share').addEventListener('click', () => {
 });
 ['status', 'kids'].forEach(id => $(id).addEventListener('change', render));
 $('qbi').addEventListener('change', render);
+/* ---------- side hustle rankings ----------
+   monthly $ ranges: typical part-time effort, national baseline;
+   pop: popularity score by state character (u)rban / (m)ixed / (t)ourism / (r)ural */
+const SIDE_JOBS = [
+  { n: 'Rideshare driving',              min: 300, avg: 800,  max: 2000, pop: { u: 10, m: 8, t: 9,  r: 4 } },
+  { n: 'Food & grocery delivery',        min: 250, avg: 700,  max: 1800, pop: { u: 10, m: 8, t: 8,  r: 5 } },
+  { n: 'Freelancing (design, writing, dev)', min: 400, avg: 1200, max: 5000, pop: { u: 9, m: 9, t: 8, r: 8 } },
+  { n: 'Online selling & reselling',     min: 200, avg: 600,  max: 3000, pop: { u: 8,  m: 9, t: 8,  r: 9 } },
+  { n: 'Tutoring & test prep',           min: 200, avg: 500,  max: 1500, pop: { u: 8,  m: 8, t: 7,  r: 7 } },
+  { n: 'Pet sitting & dog walking',      min: 150, avg: 400,  max: 1200, pop: { u: 8,  m: 7, t: 7,  r: 5 } },
+  { n: 'Airbnb hosting (spare room)',    min: 500, avg: 1200, max: 3500, pop: { u: 6,  m: 6, t: 10, r: 7 } },
+  { n: 'Handyman & odd jobs',            min: 300, avg: 700,  max: 2500, pop: { u: 6,  m: 8, t: 7,  r: 10 } },
+  { n: 'Babysitting & childcare',        min: 200, avg: 500,  max: 1500, pop: { u: 7,  m: 8, t: 7,  r: 8 } },
+  { n: 'Content creation & social media', min: 50, avg: 300,  max: 5000, pop: { u: 7,  m: 7, t: 7,  r: 6 } },
+  { n: 'Bookkeeping & virtual admin',    min: 300, avg: 800,  max: 2500, pop: { u: 6,  m: 7, t: 6,  r: 7 } },
+  { n: 'Lawn care & snow removal',       min: 200, avg: 600,  max: 2200, pop: { u: 4,  m: 7, t: 5,  r: 9 } },
+];
+const SIDE_PROFILE = {
+  NY:'u', NJ:'u', MA:'u', IL:'u', DC:'u', CA:'u', WA:'u', MD:'u', CT:'u', RI:'u',
+  HI:'t', FL:'t', NV:'t', AZ:'t', TN:'t', CO:'t', SC:'t', LA:'t',
+  MT:'r', WY:'r', SD:'r', ND:'r', VT:'r', WV:'r', MS:'r', AR:'r', AL:'r', KY:'r',
+  IA:'r', ID:'r', KS:'r', NE:'r', OK:'r', NM:'r', AK:'r', ME:'r',
+};
+const SIDE_IDX = {
+  DC:1.3, MA:1.2, CA:1.2, NY:1.18, WA:1.18, CT:1.12, NJ:1.12, MD:1.1, CO:1.08, HI:1.08,
+  VA:1.05, IL:1.05, OR:1.05, AK:1.05, MN:1.03, NH:1.02, RI:1.02, DE:1.02,
+  FL:0.98, GA:0.98, AZ:0.98, NC:0.96, WI:0.96, MI:0.96, ME:0.95, VT:0.95, ND:0.95,
+  OH:0.94, TN:0.94, IN:0.93, MO:0.92, IA:0.92, KS:0.92, NE:0.92, WY:0.92, ID:0.92, SC:0.92,
+  MT:0.9, SD:0.9, KY:0.88, LA:0.88, OK:0.88, NM:0.88, AL:0.86, AR:0.85, WV:0.83, MS:0.82,
+};
+
+function renderSide() {
+  const code = $('sideState').value;
+  const idx = SIDE_IDX[code] || 1;
+  const prof = SIDE_PROFILE[code] || 'm';
+  const r10 = v => Math.round(v * idx / 10) * 10;
+  $('sideStateName').textContent = STATES[code].n;
+  const jobs = SIDE_JOBS
+    .map(j => ({ n: j.n, s: j.pop[prof], min: r10(j.min), avg: r10(j.avg), max: r10(j.max) }))
+    .sort((a, b) => b.s - a.s || b.avg - a.avg)
+    .slice(0, 10);
+  const top = Math.max(...jobs.map(j => j.max));
+  $('sideList').innerHTML = jobs.map((j, i) => `
+    <div class="sj-row">
+      <div class="sj-name"><span class="sj-rank">${i + 1}</span><b>${j.n}</b></div>
+      <div class="sj-bar" role="img" aria-label="${j.n}: ${fmt$(j.min)} to ${fmt$(j.max)} per month, typically ${fmt$(j.avg)}">
+        <span class="sj-track"></span>
+        <span class="sj-range" style="left:${(j.min / top * 100).toFixed(1)}%;width:${((j.max - j.min) / top * 100).toFixed(1)}%"></span>
+        <span class="sj-avg" style="left:calc(${(j.avg / top * 100).toFixed(1)}% - 6px)"></span>
+      </div>
+      <div class="sj-val">${fmt$(j.min)}–${fmt$(j.max)}<span class="pct">/mo</span> · typ ${fmt$(j.avg)}<br>
+        <a href="#" data-avg="${j.avg}">see take-home →</a></div>
+    </div>`).join('');
+}
+
+(function buildSideState() {
+  const sel = $('sideState');
+  Object.keys(STATES).sort((a, b) => STATES[a].n.localeCompare(STATES[b].n)).forEach(code => {
+    const o = document.createElement('option');
+    o.value = code;
+    o.textContent = STATES[code].n;
+    sel.appendChild(o);
+  });
+  sel.value = selected;
+  sel.addEventListener('change', renderSide);
+})();
+
+$('sideList').addEventListener('click', e => {
+  const a = e.target.closest('a[data-avg]');
+  if (!a) return;
+  e.preventDefault();
+  $('se').value = Math.round(Number(a.dataset.avg) * 12 / freq).toLocaleString('en-US');
+  selected = $('sideState').value;
+  switchTab('calc');
+  render();
+  scrollTo({ top: 0, behavior: 'smooth' });
+});
+
 /* ---------- tabs ---------- */
 function switchTab(which) {
   const calc = which === 'calc';
   $('viewCalc').hidden = !calc;
-  $('viewHealth').hidden = calc;
+  $('viewSide').hidden = calc;
   $('tabCalc').classList.toggle('on', calc);
-  $('tabHealth').classList.toggle('on', !calc);
+  $('tabSide').classList.toggle('on', !calc);
   $('tabCalc').setAttribute('aria-selected', calc);
-  $('tabHealth').setAttribute('aria-selected', !calc);
+  $('tabSide').setAttribute('aria-selected', !calc);
+  if (!calc) { $('sideState').value = selected; renderSide(); }
   hideTip();
 }
 $('tabCalc').addEventListener('click', () => switchTab('calc'));
-$('tabHealth').addEventListener('click', () => switchTab('health'));
+$('tabSide').addEventListener('click', () => switchTab('side'));
 
 document.querySelector('.rank-cols').addEventListener('click', e => {
   const go = e.target.dataset && e.target.dataset.go;
