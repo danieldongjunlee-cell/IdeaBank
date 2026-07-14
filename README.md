@@ -15,6 +15,9 @@
 1. [Google Search Console](https://search.google.com/search-console)에 사이트 등록 → 소유권 확인 → `sitemap.xml` 제출 → URL 검사에서 "색인 생성 요청"
 2. [Bing Webmaster Tools](https://www.bing.com/webmasters)에도 동일하게 등록
 3. `prototype/takehome-map.html`과 `docs/index.html`의 `AFFILIATES` 객체에 실제 제휴 링크를 넣기 (현재는 자리표시자)
+4. **사용자 입력 수집**: `analytics/README.md`의 5분 설정(구글 시트 + Apps Script)을 마친 뒤
+   두 HTML 파일의 `ANALYTICS_ENDPOINT`에 웹앱 URL을 넣으면 방문자 시나리오가 시트에 쌓입니다
+   (비워두면 수집 완전 비활성화)
 4. 커스텀 도메인(예: takehome.tax 같은)을 쓰면 신뢰도·클릭률·순위에 모두 유리합니다 — Pages 설정에서 연결 후 `canonical`/`sitemap`/`robots`의 URL을 교체하세요.
 
 순위는 색인 시간·콘텐츠·백링크에 따라 올라갑니다. 페이지 내부(on-page) SEO는 모두 적용되어 있습니다.

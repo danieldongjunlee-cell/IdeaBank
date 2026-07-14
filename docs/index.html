@@ -653,7 +653,9 @@
   as most states do. State income tax uses simplified 2025 rate schedules for every year on
   federal taxable income before QBI; it excludes local/city taxes (e.g. NYC, MD counties) and
   state-specific deductions or credits. Washington taxes only capital gains and New Hampshire
-  only investment income, so both show as no wage tax.</p>
+  only investment income, so both show as no wage tax. <b>Privacy:</b> if usage analytics are
+  enabled, this site records the anonymous scenario numbers you enter (state, income amounts,
+  options) to improve the tool — never your name, email, account, or precise location.</p>
   </div><!-- /viewCalc -->
 
   <div id="viewSide" hidden>
@@ -1012,6 +1014,7 @@ function render() {
   renderRank(keeps);
   renderNextMoves(inp, c, keeps[selected]);
   renderCompare(inp, c);
+  trackScenario();
 }
 
 function renderDetail(inp, c, keeps) {
@@ -1362,6 +1365,7 @@ $('share').addEventListener('click', () => {
   history.replaceState(null, '', writeHash());
   const done = () => { $('share').textContent = 'Link copied ✓'; setTimeout(() => { $('share').textContent = 'Copy shareable link'; }, 1600); };
   if (navigator.clipboard) navigator.clipboard.writeText(location.href).then(done, done); else done();
+  track('share');
 });
 
 /* ---------- wire inputs ---------- */
@@ -1480,6 +1484,36 @@ $('sideList').addEventListener('click', e => {
   }
 });
 
+/* ---------- anonymous usage analytics ----------
+   Paste your Google Apps Script web-app URL here (setup: analytics/README.md).
+   Leave empty to disable ALL collection. Never collects names, emails, or accounts —
+   only the anonymous scenario numbers, disclosed in the page footer. */
+const ANALYTICS_ENDPOINT = '';
+
+const track = (() => {
+  if (!ANALYTICS_ENDPOINT) return () => {};
+  let sends = 0, sid = 'anon';
+  try {
+    sid = sessionStorage.sid || (sessionStorage.sid = Math.random().toString(36).slice(2) + Date.now().toString(36));
+  } catch (e) { /* storage blocked — stay 'anon' */ }
+  return (event, extra) => {
+    if (sends++ > 40) return;   // respect free-tier quotas
+    try {
+      const body = JSON.stringify(Object.assign(
+        { sid, event, at: new Date().toISOString(), year: taxYear, state: selected, inputs: readInputs() }, extra));
+      if (!(navigator.sendBeacon && navigator.sendBeacon(ANALYTICS_ENDPOINT, body))) {
+        fetch(ANALYTICS_ENDPOINT, { method: 'POST', mode: 'no-cors', keepalive: true, body });
+      }
+    } catch (e) { /* analytics must never break the app */ }
+  };
+})();
+let trackTimer;
+function trackScenario() {
+  clearTimeout(trackTimer);
+  trackTimer = setTimeout(() => track('scenario'), 3000);   // settle 3s after the last change
+}
+addEventListener('pagehide', () => track('leave'));
+
 /* ---------- tabs ---------- */
 function switchTab(which) {
   const calc = which === 'calc';
@@ -1491,6 +1525,7 @@ function switchTab(which) {
   $('tabSide').setAttribute('aria-selected', !calc);
   if (!calc) { $('sideState').value = selected; renderSide(); }
   hideTip();
+  track('tab', { tab: which });
 }
 $('tabCalc').addEventListener('click', () => switchTab('calc'));
 $('tabSide').addEventListener('click', () => switchTab('side'));
