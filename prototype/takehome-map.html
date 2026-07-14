@@ -89,6 +89,12 @@
     padding: 2px 10px; color: var(--ink-2); letter-spacing: 0.08em;
     background: var(--surface);
   }
+  .badge-select {
+    border: 1px solid var(--hairline); border-radius: 999px; padding: 3px 10px;
+    background: var(--surface); color: var(--ink-2); cursor: pointer;
+    font: 600 11px/1.4 system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .badge-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   h1 {
     margin: 12px 0 4px;
     font: 700 clamp(28px, 5vw, 44px)/1.12 Georgia, 'Iowan Old Style', 'Times New Roman', serif;
@@ -327,7 +333,13 @@
 
 <div class="wrap">
   <div class="topbar">
-    <div class="eyebrow">TakeHome · Prototype <span class="badge">Tax year 2025</span></div>
+    <div class="eyebrow">TakeHome · Prototype
+      <select id="taxYear" class="badge-select" aria-label="Tax year">
+        <option value="2026" selected>Tax year 2026</option>
+        <option value="2025">Tax year 2025</option>
+        <option value="2024">Tax year 2024</option>
+      </select>
+    </div>
     <div class="theme-ctl" role="group" aria-label="Color theme">
       <button class="swatch" data-accent="green" aria-label="Green theme" style="--sw:#0c7d43"></button>
       <button class="swatch" data-accent="blue" aria-label="Blue theme" style="--sw:#256abf"></button>
@@ -387,7 +399,7 @@
         <select id="kids">
           <option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
         </select>
-        <div class="hint">Child tax credit, $2,200 each</div>
+        <div class="hint" id="hintKids">Child tax credit, $2,200 each</div>
       </div>
     </div>
     <details id="more">
@@ -401,7 +413,7 @@
               <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
             </select>
           </div>
-          <div class="hint">Up to $25,000 federal-tax-free · §224</div>
+          <div class="hint" id="hintTips">Up to $25,000 federal-tax-free · §224</div>
         </div>
         <div class="field">
           <label for="ot">Overtime premium</label>
@@ -411,7 +423,7 @@
               <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
             </select>
           </div>
-          <div class="hint">The extra "half" of time-and-a-half · §225</div>
+          <div class="hint" id="hintOt">The extra "half" of time-and-a-half · §225</div>
         </div>
         <div class="field">
           <label for="ltcg">Long-term gains &amp; dividends</label>
@@ -437,7 +449,7 @@
               <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
             </select>
           </div>
-          <div class="hint">Pre-tax, max $23,500/yr · §402(g)</div>
+          <div class="hint" id="hintK401">Pre-tax, max $23,500/yr · §402(g)</div>
         </div>
         <div class="field">
           <label for="ira">Traditional IRA</label>
@@ -447,7 +459,7 @@
               <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
             </select>
           </div>
-          <div class="hint">Max $7,000/yr · §219</div>
+          <div class="hint" id="hintIra">Max $7,000/yr · §219</div>
         </div>
         <div class="field">
           <label for="sep">SEP-IRA / Solo 401(k)</label>
@@ -542,8 +554,9 @@
     </details>
   </section>
 
-  <p class="foot"><b>Prototype — educational estimate, not tax advice.</b> Uses 2025 federal
-  brackets (§1), standard deduction (§63), FICA (§3101) / self-employment tax (§1401) with the
+  <p class="foot"><b>Prototype — educational estimate, not tax advice.</b> Uses the selected
+  tax year's (2024–2026) federal brackets (§1), standard deduction (§63), retirement limits, and
+  capital-gains breakpoints, with FICA (§3101) / self-employment tax (§1401) on that year's
   Social Security wage base coordinated across W-2 and 1099 income, additional Medicare tax,
   child tax credit with phase-out (§24), elective deferrals (§402(g)), IRA deduction without
   income phase-outs (§219), SEP contributions (§408(k)), and an unconditional 20% QBI deduction
@@ -554,7 +567,7 @@
   income is taxed by type: unemployment (§85), gambling winnings without loss offsets (§165(d)),
   prizes (§74), hobby income (§183), early retirement withdrawals with the 10% additional tax
   (§72(t)), and Social Security via the §86 provisional-income formula — treated as state-exempt,
-  as most states do. State income tax uses simplified 2025 rate schedules on
+  as most states do. State income tax uses simplified 2025 rate schedules for every year on
   federal taxable income before QBI; it excludes local/city taxes (e.g. NYC, MD counties) and
   state-specific deductions or credits. Washington taxes only capital gains and New Hampshire
   only investment income, so both show as no wage tax.</p>
@@ -587,20 +600,54 @@
 <script>
 'use strict';
 
-/* ---------- federal constants (tax year 2025) ---------- */
-const FED = {
-  single: [[0,.10],[11925,.12],[48475,.22],[103350,.24],[197300,.32],[250525,.35],[626350,.37]],
-  mfj:    [[0,.10],[23850,.12],[96950,.22],[206700,.24],[394600,.32],[501050,.35],[751600,.37]],
-  hoh:    [[0,.10],[17000,.12],[64850,.22],[103350,.24],[197300,.32],[250500,.35],[626350,.37]],
+/* ---------- federal constants by tax year ---------- */
+const YEARS = {
+  2024: {
+    fed: {
+      single: [[0,.10],[11600,.12],[47150,.22],[100525,.24],[191950,.32],[243725,.35],[609350,.37]],
+      mfj:    [[0,.10],[23200,.12],[94300,.22],[201050,.24],[383900,.32],[487450,.35],[731200,.37]],
+      hoh:    [[0,.10],[16550,.12],[63100,.22],[100500,.24],[191950,.32],[243700,.35],[609350,.37]],
+    },
+    std: { single: 14600, mfj: 29200, hoh: 21900 },
+    cg: {
+      single: [[0,0],[47025,.15],[518900,.20]],
+      mfj:    [[0,0],[94050,.15],[583750,.20]],
+      hoh:    [[0,0],[63000,.15],[551350,.20]],
+    },
+    ssBase: 168600, ctc: 2000, k401: 23000, ira: 7000, sepCap: 69000, tipsOT: false,
+  },
+  2025: {
+    fed: {
+      single: [[0,.10],[11925,.12],[48475,.22],[103350,.24],[197300,.32],[250525,.35],[626350,.37]],
+      mfj:    [[0,.10],[23850,.12],[96950,.22],[206700,.24],[394600,.32],[501050,.35],[751600,.37]],
+      hoh:    [[0,.10],[17000,.12],[64850,.22],[103350,.24],[197300,.32],[250500,.35],[626350,.37]],
+    },
+    std: { single: 15750, mfj: 31500, hoh: 23625 },
+    cg: {
+      single: [[0,0],[48350,.15],[533400,.20]],
+      mfj:    [[0,0],[96700,.15],[600050,.20]],
+      hoh:    [[0,0],[64750,.15],[566700,.20]],
+    },
+    ssBase: 176100, ctc: 2200, k401: 23500, ira: 7000, sepCap: 70000, tipsOT: true,
+  },
+  2026: {
+    fed: {
+      single: [[0,.10],[12400,.12],[50400,.22],[105700,.24],[201775,.32],[256225,.35],[640600,.37]],
+      mfj:    [[0,.10],[24800,.12],[100800,.22],[211400,.24],[403550,.32],[512450,.35],[768700,.37]],
+      hoh:    [[0,.10],[17700,.12],[67450,.22],[105700,.24],[201775,.32],[256200,.35],[640600,.37]],
+    },
+    std: { single: 16100, mfj: 32200, hoh: 24150 },
+    cg: {
+      single: [[0,0],[49450,.15],[545500,.20]],
+      mfj:    [[0,0],[98900,.15],[613700,.20]],
+      hoh:    [[0,0],[66200,.15],[579600,.20]],
+    },
+    ssBase: 184500, ctc: 2200, k401: 24500, ira: 7500, sepCap: 72000, tipsOT: true,
+  },
 };
-const STD = { single: 15750, mfj: 31500, hoh: 23625 };
-const CG = {
-  single: [[0,0],[48350,.15],[533400,.20]],
-  mfj:    [[0,0],[96700,.15],[600050,.20]],
-  hoh:    [[0,0],[64750,.15],[566700,.20]],
-};
-const SS_WAGE_BASE = 176100;
-const CTC_PER_CHILD = 2200;
+const DEFAULT_YEAR = 2026;
+let taxYear = DEFAULT_YEAR, YR = YEARS[DEFAULT_YEAR];
+let FED = YR.fed, STD = YR.std, CG = YR.cg, SS_WAGE_BASE = YR.ssBase, CTC_PER_CHILD = YR.ctc;
 
 /* ---------- states: tile-grid position + simplified 2025 tax model ---------- */
 const STATES = {
@@ -714,9 +761,9 @@ const MISC_TYPES = {
 
 function calc(inp) {
   const wages = inp.w2 + inp.tips + inp.ot;          // tips & OT premium are W-2 wages for FICA
-  const k401 = Math.min(inp.k401, wages, 23500);
-  const sep = Math.min(inp.sep, 70000, 0.25 * inp.se);
-  const ira = Math.min(inp.ira, 7000);
+  const k401 = Math.min(inp.k401, wages, YR.k401);
+  const sep = Math.min(inp.sep, YR.sepCap, 0.25 * inp.se);
+  const ira = Math.min(inp.ira, YR.ira);
   const seBase = inp.se * 0.9235;
   const seTax = Math.min(seBase, Math.max(0, SS_WAGE_BASE - wages)) * 0.124 + seBase * 0.029;
   const addlThresh = inp.status === 'mfj' ? 250000 : 200000;
@@ -749,10 +796,10 @@ function calc(inp) {
   const stateBase = Math.max(0, agi - ssTaxable - STD[inp.status]);    // most states exempt Social Security
   const qbiBase = Math.max(0, inp.se - seTax / 2 - sep);
   const qbiDed = inp.qbi ? Math.min(0.2 * qbiBase, 0.2 * taxable0) : 0;
-  /* §224 tips & §225 overtime deductions (2025–2028), phased out $100 per $1,000 of AGI over threshold */
+  /* §224 tips & §225 overtime deductions (2025–2028 only), phased out $100 per $1,000 of AGI over threshold */
   const toPhase = 100 * Math.ceil(Math.max(0, agi - (inp.status === 'mfj' ? 300000 : 150000)) / 1000);
-  const tipsDed = Math.max(0, Math.min(inp.tips, 25000) - toPhase);
-  const otDed = Math.max(0, Math.min(inp.ot, inp.status === 'mfj' ? 25000 : 12500) - toPhase);
+  const tipsDed = YR.tipsOT ? Math.max(0, Math.min(inp.tips, 25000) - toPhase) : 0;
+  const otDed = YR.tipsOT ? Math.max(0, Math.min(inp.ot, inp.status === 'mfj' ? 25000 : 12500) - toPhase) : 0;
   const fedTaxable = Math.max(0, taxable0 - qbiDed - tipsDed - otDed);
   const cgPart = Math.min(inp.ltcg, fedTaxable);
   const ordTaxable = fedTaxable - cgPart;
@@ -817,6 +864,20 @@ function parseMoney(el) {
   const v = Math.max(0, Number(el.value.replace(/[^0-9.]/g, '')) || 0);
   return Math.min(v, 50000000);
 }
+
+/* ---------- tax year ---------- */
+function setYear(y) {
+  taxYear = y;
+  YR = YEARS[y];
+  FED = YR.fed; STD = YR.std; CG = YR.cg; SS_WAGE_BASE = YR.ssBase; CTC_PER_CHILD = YR.ctc;
+  $('taxYear').value = String(y);
+  $('hintKids').textContent = `Child tax credit, ${fmt$(YR.ctc)} each`;
+  $('hintK401').textContent = `Pre-tax, max ${fmt$(YR.k401)}/yr · §402(g)`;
+  $('hintIra').textContent = `Max ${fmt$(YR.ira)}/yr · §219`;
+  $('hintTips').textContent = YR.tipsOT ? 'Up to $25,000 federal-tax-free · §224' : `Fully taxed in ${y} (§224 starts 2025)`;
+  $('hintOt').textContent = YR.tipsOT ? 'The extra "half" of time-and-a-half · §225' : `Fully taxed in ${y} (§225 starts 2025)`;
+}
+$('taxYear').addEventListener('change', () => { setYear(Number($('taxYear').value)); render(); });
 
 /* per-field pay frequency: each amount can be entered per year, month, or bi-weekly paycheck */
 const UNIT_FIELDS = ['w2', 'se', 'tips', 'ot', 'k401', 'ira', 'sep'];
@@ -1125,6 +1186,7 @@ function writeHash() {
   const parts = ['w2=' + raw('w2'), 'se=' + raw('se'), 'fs=' + $('status').value, 'k=' + $('kids').value, 'st=' + selected];
   ['tips', 'ot', 'ltcg', 'k401', 'ira', 'sep'].forEach(key => { if (raw(key)) parts.push(key + '=' + raw(key)); });
   UNIT_FIELDS.forEach(id => { if (units[id] !== 1) parts.push(id + 'u=' + units[id]); });
+  if (taxYear !== DEFAULT_YEAR) parts.push('yr=' + taxYear);
   if (misc.length) parts.push('misc=' + misc.map(m => m.t + ':' + m.v).join(','));
   if (!$('qbi').checked) parts.push('qbi=0');
   return '#' + parts.join('&');
@@ -1132,6 +1194,7 @@ function writeHash() {
 function readHash() {
   if (!location.hash) return;
   const p = new URLSearchParams(location.hash.slice(1));
+  if (YEARS[Number(p.get('yr'))]) setYear(Number(p.get('yr')));
   UNIT_FIELDS.forEach(id => {
     if ([12, 26].includes(Number(p.get(id + 'u')))) setUnit(id, Number(p.get(id + 'u')));
   });
@@ -1299,6 +1362,7 @@ document.querySelector('.rank-cols').addEventListener('click', e => {
   if (go) { selected = go; render(); scrollTo({ top: 0, behavior: 'smooth' }); }
 });
 
+setYear(DEFAULT_YEAR);
 readHash();
 renderMiscRows();
 applyTheme();
