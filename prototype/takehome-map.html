@@ -65,6 +65,20 @@
   .wrap { max-width: 1060px; margin: 0 auto; padding: 28px 20px 64px; }
 
   /* ---------- header ---------- */
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .theme-ctl { display: flex; align-items: center; gap: 8px; }
+  .swatch {
+    width: 20px; height: 20px; border-radius: 50%; padding: 0; cursor: pointer;
+    background: var(--sw); border: 2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--hairline);
+  }
+  .swatch.on { box-shadow: 0 0 0 2px var(--ink); }
+  .swatch:focus-visible, .mode-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .mode-btn {
+    border: 1px solid var(--hairline); border-radius: 999px; padding: 5px 12px;
+    background: var(--surface); color: var(--ink-2); cursor: pointer;
+    font: 600 12px/1.2 system-ui, sans-serif; min-width: 64px;
+  }
   .eyebrow {
     font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--accent);
@@ -204,7 +218,7 @@
     font-variant-numeric: tabular-nums;
   }
   .rung.past { background: var(--tile-empty); color: var(--ink-2); }
-  .rung.now { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+  .rung.now { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #ffffff); }
   .marginal p { margin: 0; font-size: 13px; color: var(--ink-2); }
   .marginal p b { color: var(--ink); }
 
@@ -229,7 +243,15 @@
 </style>
 
 <div class="wrap">
-  <div class="eyebrow">TakeHome · Prototype <span class="badge">Tax year 2025</span></div>
+  <div class="topbar">
+    <div class="eyebrow">TakeHome · Prototype <span class="badge">Tax year 2025</span></div>
+    <div class="theme-ctl" role="group" aria-label="Color theme">
+      <button class="swatch" data-accent="green" aria-label="Green theme" style="--sw:#0c7d43"></button>
+      <button class="swatch" data-accent="blue" aria-label="Blue theme" style="--sw:#256abf"></button>
+      <button class="swatch" data-accent="violet" aria-label="Violet theme" style="--sw:#5443b0"></button>
+      <button class="mode-btn" id="modeBtn" aria-label="Switch between auto, light, and dark mode">Auto</button>
+    </div>
+  </div>
   <h1>What do you actually <em>keep</em>, state by state?</h1>
   <p class="sub">W-2 salary, 1099 self-employment, tips, overtime, investments — see your real
   after-tax income in every state, the exact tax-code sections applied, and how retirement
@@ -333,7 +355,7 @@
         <span id="legMin"></span>
         <span class="ramp" id="legRamp"></span>
         <span id="legMax"></span>
-        <span style="margin-left:auto">darker green = you keep more</span>
+        <span style="margin-left:auto">darker = you keep more</span>
       </div>
     </div>
 
@@ -433,8 +455,29 @@ const STATES = {
   FL:{n:'Florida',c:9,r:7,none:1},
 };
 
-/* sequential green ramp, light→dark (lightness-monotonic, validated) */
-const RAMP = ['#d7f0df','#abdebd','#7ec79b','#4fae77','#279257','#0c7643','#07542f'];
+/* color themes: sequential ramps are lightness-monotonic; segment palettes CVD-validated per mode */
+const THEMES = {
+  green: {
+    ramp: ['#d7f0df','#abdebd','#7ec79b','#4fae77','#279257','#0c7643','#07542f'],
+    tileInk: '#07421f',
+    light: { accent:'#0c7d43', accentInk:'#06542f', fed:'#2a78d6', state:'#e34948', fica:'#4a3aa7', se:'#eda100', keep:'#0c7d43' },
+    dark:  { accent:'#2fae6e', accentInk:'#6fd6a4', fed:'#3987e5', state:'#e66767', fica:'#9085e9', se:'#c98500', keep:'#2fae6e' },
+  },
+  blue: {
+    ramp: ['#cde2fb','#9ec5f4','#6da7ec','#3987e5','#256abf','#184f95','#0d366b'],
+    tileInk: '#0d366b',
+    light: { accent:'#256abf', accentInk:'#184f95', fed:'#0c7d43', state:'#e34948', fica:'#4a3aa7', se:'#eda100', keep:'#256abf' },
+    dark:  { accent:'#3987e5', accentInk:'#86b6ef', fed:'#2fae6e', state:'#e66767', fica:'#9085e9', se:'#c98500', keep:'#3987e5' },
+  },
+  violet: {
+    ramp: ['#e6e0fb','#ccc2f5','#ada0ec','#8f7fe0','#7161cf','#5443b0','#392b82'],
+    tileInk: '#2a1f66',
+    light: { accent:'#5443b0', accentInk:'#392b82', fed:'#2a78d6', state:'#e34948', fica:'#1baf7a', se:'#eda100', keep:'#4a3aa7' },
+    dark:  { accent:'#9085e9', accentInk:'#b9b1f2', fed:'#3987e5', state:'#e66767', fica:'#199e70', se:'#c98500', keep:'#9085e9' },
+  },
+};
+let RAMP = THEMES.green.ramp;
+let TILE_INK = THEMES.green.tileInk;
 
 /* ---------- tax engine ---------- */
 function bracketTax(income, brackets) {
@@ -607,7 +650,7 @@ function render() {
     const t = $('t-' + code);
     const bin = c.gross === 0 ? 0 : Math.min(6, Math.floor((keeps[code] - min) / span * 7));
     t.style.background = c.gross === 0 ? 'var(--tile-empty)' : RAMP[bin];
-    t.style.color = c.gross === 0 ? 'var(--ink-2)' : (bin >= 3 ? '#ffffff' : '#07421f');
+    t.style.color = c.gross === 0 ? 'var(--ink-2)' : (bin >= 3 ? '#ffffff' : TILE_INK);
     t.classList.toggle('sel', code === selected);
     t.setAttribute('aria-selected', code === selected);
     t.dataset.keep = keeps[code];
@@ -729,13 +772,68 @@ function renderRank(keeps) {
     b.addEventListener('mouseleave', () => { $('tip').style.display = 'none'; });
     map.appendChild(b);
   }
+})();
+
+/* ---------- color theme switcher ---------- */
+const rootEl = document.documentElement;
+let themeAccent = 'green', themeMode = 'auto';
+try {
+  themeAccent = localStorage.getItem('th-accent') || 'green';
+  themeMode = localStorage.getItem('th-mode') || 'auto';
+} catch (e) { /* storage unavailable */ }
+if (!THEMES[themeAccent]) themeAccent = 'green';
+if (!['auto', 'light', 'dark'].includes(themeMode)) themeMode = 'auto';
+
+function isDarkNow() {
+  if (themeMode === 'dark') return true;
+  if (themeMode === 'light') return false;
+  if (rootEl.dataset.theme === 'dark') return true;
+  if (rootEl.dataset.theme === 'light') return false;
+  return matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function applyTheme() {
+  if (themeMode !== 'auto' && rootEl.dataset.theme !== themeMode) rootEl.dataset.theme = themeMode;
+  const t = THEMES[themeAccent];
+  const m = isDarkNow() ? t.dark : t.light;
+  const s = rootEl.style;
+  s.setProperty('--accent', m.accent);
+  s.setProperty('--accent-ink', m.accentInk);
+  s.setProperty('--on-accent', isDarkNow() ? '#101613' : '#ffffff');
+  s.setProperty('--seg-fed', m.fed);
+  s.setProperty('--seg-state', m.state);
+  s.setProperty('--seg-fica', m.fica);
+  s.setProperty('--seg-se', m.se);
+  s.setProperty('--seg-keep', m.keep);
+  RAMP = t.ramp;
+  TILE_INK = t.tileInk;
+  document.querySelectorAll('.swatch').forEach(b => b.classList.toggle('on', b.dataset.accent === themeAccent));
+  $('modeBtn').textContent = themeMode === 'auto' ? 'Auto' : themeMode === 'light' ? '☀ Light' : '☾ Dark';
   const ramp = $('legRamp');
+  ramp.innerHTML = '';
   RAMP.forEach(hex => {
     const i = document.createElement('i');
     i.style.background = hex;
     ramp.appendChild(i);
   });
-})();
+}
+
+document.querySelectorAll('.swatch').forEach(b => b.addEventListener('click', () => {
+  themeAccent = b.dataset.accent;
+  try { localStorage.setItem('th-accent', themeAccent); } catch (e) {}
+  applyTheme();
+  render();
+}));
+$('modeBtn').addEventListener('click', () => {
+  themeMode = themeMode === 'auto' ? 'light' : themeMode === 'light' ? 'dark' : 'auto';
+  if (themeMode === 'auto') delete rootEl.dataset.theme;
+  try { localStorage.setItem('th-mode', themeMode); } catch (e) {}
+  applyTheme();
+  render();
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { applyTheme(); render(); });
+new MutationObserver(() => { applyTheme(); render(); })
+  .observe(rootEl, { attributes: true, attributeFilter: ['data-theme'] });
 
 /* ---------- miscellaneous income rows ---------- */
 let misc = [];
@@ -825,5 +923,6 @@ document.querySelector('.rank-cols').addEventListener('click', e => {
 
 readHash();
 renderMiscRows();
+applyTheme();
 render();
 </script>
