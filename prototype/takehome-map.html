@@ -878,6 +878,13 @@ function renderRank(keeps) {
   }
 })();
 
+/* hide the tooltip whenever interaction moves anywhere off the map */
+const hideTip = () => { $('tip').style.display = 'none'; };
+document.addEventListener('pointerdown', e => { if (!e.target.closest('#map .tile')) hideTip(); }, true);
+document.addEventListener('focusin', e => { if (!e.target.closest('#map')) hideTip(); });
+window.addEventListener('scroll', hideTip, { passive: true });
+window.addEventListener('blur', hideTip);
+
 /* ---------- color theme switcher ---------- */
 const rootEl = document.documentElement;
 let themeAccent = 'green', themeMode = 'auto';
