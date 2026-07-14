@@ -120,6 +120,26 @@
   details .inputs { margin-top: 14px; }
   .check { display: flex; align-items: center; gap: 8px; margin-top: 26px; font-size: 13px; color: var(--ink-2); }
   .check input { accent-color: var(--accent); width: 16px; height: 16px; }
+  .add-misc {
+    width: 100%; padding: 9px 11px; border: 1px dashed var(--accent); border-radius: 8px;
+    background: none; color: var(--accent-ink); font: 600 13px/1.2 system-ui, sans-serif; cursor: pointer;
+  }
+  .add-misc:hover { background: var(--tile-empty); }
+  .misc-row { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 10px; margin-top: 10px; align-items: center; }
+  .misc-row select, .misc-row input {
+    padding: 9px 11px; border: 1px solid var(--hairline); border-radius: 8px;
+    background: var(--page); color: var(--ink); font: inherit; font-variant-numeric: tabular-nums;
+    min-width: 0;
+  }
+  .misc-row .rm {
+    border: 1px solid var(--hairline); background: none; color: var(--muted); cursor: pointer;
+    border-radius: 8px; width: 34px; height: 38px; font-size: 16px; line-height: 1;
+  }
+  .misc-row .rm:hover { color: var(--seg-state); border-color: var(--seg-state); }
+  .code-note {
+    font-size: 12px; color: var(--muted); margin: 14px 0 0;
+    padding-top: 10px; border-top: 1px dashed var(--hairline);
+  }
 
   /* ---------- layout ---------- */
   .cols { display: grid; grid-template-columns: 1.35fr 1fr; gap: 20px; margin-top: 20px; align-items: start; }
@@ -267,11 +287,12 @@
           <div class="hint">0 / 15 / 20% rates + NIIT · §1(h)</div>
         </div>
         <div class="field">
-          <label for="oth">Other ordinary income</label>
-          <input id="oth" type="text" inputmode="numeric" value="0" autocomplete="off">
-          <div class="hint">Interest, rental, unemployment…</div>
+          <label>Miscellaneous income</label>
+          <button type="button" class="add-misc" id="addMisc">+ Add income type</button>
+          <div class="hint">Gambling, Social Security, rental…</div>
         </div>
       </div>
+      <div id="miscRows"></div>
     </details>
     <details id="adv">
       <summary>Advanced accuracy — retirement &amp; QBI</summary>
@@ -338,8 +359,11 @@
   (§199A) that ignores SSTB phase-outs. Tips and overtime premium stay subject to FICA but get the
   2025–2028 federal deductions (§224, §225) with their $150k/$300k AGI phase-out — assuming a
   qualifying occupation and FLSA-qualifying overtime. Long-term gains and qualified dividends use
-  stacked 0/15/20% rates (§1(h)) plus the 3.8% NIIT (§1411), with no loss netting. State income
-  tax uses simplified 2025 rate schedules on
+  stacked 0/15/20% rates (§1(h)) plus the 3.8% NIIT (§1411), with no loss netting. Miscellaneous
+  income is taxed by type: unemployment (§85), gambling winnings without loss offsets (§165(d)),
+  prizes (§74), hobby income (§183), early retirement withdrawals with the 10% additional tax
+  (§72(t)), and Social Security via the §86 provisional-income formula — treated as state-exempt,
+  as most states do. State income tax uses simplified 2025 rate schedules on
   federal taxable income before QBI; it excludes local/city taxes (e.g. NYC, MD counties) and
   state-specific deductions or credits. Washington taxes only capital gains and New Hampshire
   only investment income, so both show as no wage tax.</p>
@@ -441,6 +465,18 @@ function stackedCG(O, P, brackets) {
   return tax;
 }
 
+const MISC_TYPES = {
+  interest: { label: 'Interest income', code: '§61', nii: 1 },
+  stcg:     { label: 'Short-term gains / crypto', code: '§64', nii: 1 },
+  rental:   { label: 'Rental profit', code: '§61', nii: 1 },
+  unemp:    { label: 'Unemployment benefits', code: '§85' },
+  gamble:   { label: 'Gambling winnings', code: '§165(d)' },
+  prize:    { label: 'Prizes & awards', code: '§74' },
+  hobby:    { label: 'Hobby / side income (non-SE)', code: '§183' },
+  retire:   { label: 'Early 401(k)/IRA withdrawal', code: '§72(t)', penalty: 1 },
+  ss:       { label: 'Social Security benefits', code: '§86', ss: 1 },
+};
+
 function calc(inp) {
   const wages = inp.w2 + inp.tips + inp.ot;          // tips & OT premium are W-2 wages for FICA
   const k401 = Math.min(inp.k401, wages, 23500);
@@ -451,8 +487,31 @@ function calc(inp) {
   const addlThresh = inp.status === 'mfj' ? 250000 : 200000;
   const addlMedicare = Math.max(0, wages + seBase - addlThresh) * 0.009;
   const fica = Math.min(wages, SS_WAGE_BASE) * 0.062 + wages * 0.0145 + addlMedicare;
-  const agi = wages - k401 + inp.se - seTax / 2 - sep - ira + inp.ltcg + inp.oth;
-  const taxable0 = Math.max(0, agi - STD[inp.status]);          // pre-QBI/tips/OT; states use this
+
+  /* miscellaneous income: ordinary unless typed otherwise */
+  let miscOrd = 0, ssGross = 0, penaltyBase = 0, nii = inp.ltcg;
+  for (const m of inp.misc) {
+    const t = MISC_TYPES[m.t];
+    if (t.ss) { ssGross += m.v; continue; }
+    miscOrd += m.v;
+    if (t.penalty) penaltyBase += m.v;
+    if (t.nii) nii += m.v;
+  }
+  const agiExSS = wages - k401 + inp.se - seTax / 2 - sep - ira + inp.ltcg + miscOrd;
+  /* §86: how much of Social Security is federally taxable */
+  const provisional = agiExSS + 0.5 * ssGross;
+  const base1 = inp.status === 'mfj' ? 32000 : 25000;
+  const base2 = inp.status === 'mfj' ? 44000 : 34000;
+  let ssTaxable = 0;
+  if (ssGross > 0 && provisional > base1) {
+    ssTaxable = provisional <= base2
+      ? Math.min(0.5 * ssGross, 0.5 * (provisional - base1))
+      : Math.min(0.85 * ssGross, 0.85 * (provisional - base2) + Math.min(0.5 * ssGross, 0.5 * (base2 - base1)));
+  }
+  const penalty = 0.10 * penaltyBase;
+  const agi = agiExSS + ssTaxable;
+  const taxable0 = Math.max(0, agi - STD[inp.status]);                 // federal, pre-QBI/tips/OT
+  const stateBase = Math.max(0, agi - ssTaxable - STD[inp.status]);    // most states exempt Social Security
   const qbiBase = Math.max(0, inp.se - seTax / 2 - sep);
   const qbiDed = inp.qbi ? Math.min(0.2 * qbiBase, 0.2 * taxable0) : 0;
   /* §224 tips & §225 overtime deductions (2025–2028), phased out $100 per $1,000 of AGI over threshold */
@@ -464,16 +523,16 @@ function calc(inp) {
   const ordTaxable = fedTaxable - cgPart;
   const ordTax = bracketTax(ordTaxable, FED[inp.status]);
   const cgTax = stackedCG(ordTaxable, cgPart, CG[inp.status]);
-  const niit = 0.038 * Math.min(inp.ltcg, Math.max(0, agi - addlThresh));
+  const niit = 0.038 * Math.min(nii, Math.max(0, agi - addlThresh));
   const fedBefore = ordTax + cgTax;
   let ctc = inp.kids * CTC_PER_CHILD;
   const phaseStart = inp.status === 'mfj' ? 400000 : 200000;
   if (agi > phaseStart) ctc = Math.max(0, ctc - Math.ceil((agi - phaseStart) / 1000) * 50);
   ctc = Math.min(ctc, fedBefore);
   return {
-    gross: wages + inp.se + inp.ltcg + inp.oth, pretax: k401 + sep + ira, k401, sep, ira,
-    ordTax, cgTax, niit, fedBefore, ctc, fedTax: fedBefore - ctc, fica, seTax,
-    taxable0, fedTaxable, ordTaxable, qbiDed, tipsDed, otDed,
+    gross: wages + inp.se + inp.ltcg + miscOrd + ssGross, pretax: k401 + sep + ira, k401, sep, ira,
+    ordTax, cgTax, niit, penalty, fedBefore, ctc, fedTax: fedBefore - ctc, fica, seTax,
+    taxable0, stateBase, fedTaxable, ordTaxable, qbiDed, tipsDed, otDed, ssGross, ssTaxable,
   };
 }
 
@@ -485,7 +544,7 @@ function stateTax(code, taxable, status) {
 }
 
 function keepIn(code, c, status) {
-  return c.gross - c.fedTax - c.niit - c.fica - c.seTax - c.pretax - stateTax(code, c.taxable0, status);
+  return c.gross - c.fedTax - c.niit - c.penalty - c.fica - c.seTax - c.pretax - stateTax(code, c.stateBase, status);
 }
 
 /* ---------- ui ---------- */
@@ -508,6 +567,14 @@ const CODE_HELP = {
   '§225': 'IRC §225 — "no tax on overtime" deduction, up to $12,500 / $25,000 MFJ (2025–2028)',
   '§1(h)': 'IRC §1(h) — preferential 0/15/20% rates on long-term capital gains & qualified dividends',
   '§1411': 'IRC §1411 — 3.8% net investment income tax',
+  '§61': 'IRC §61 — gross income includes interest, rents, and all income not specifically excluded',
+  '§64': 'IRC §64 — short-term gains (assets held ≤1 year, incl. most crypto trades) taxed as ordinary income',
+  '§85': 'IRC §85 — unemployment compensation is fully taxable as ordinary income',
+  '§165(d)': 'IRC §165(d) — gambling winnings are taxable; losses deductible only if itemizing',
+  '§74': 'IRC §74 — prizes and awards are taxable as ordinary income',
+  '§183': 'IRC §183 — hobby income is taxable as ordinary income (no self-employment tax)',
+  '§72(t)': 'IRC §72(t) — early retirement withdrawals: ordinary income + 10% additional tax before age 59½',
+  '§86': 'IRC §86 — up to 85% of Social Security benefits are federally taxable, by the provisional-income formula',
 };
 const chip = c => `<span class="code" title="${CODE_HELP[c]}">${c}</span>`;
 
@@ -520,7 +587,8 @@ function readInputs() {
   return {
     w2: parseMoney($('w2')), se: parseMoney($('se')),
     tips: parseMoney($('tips')), ot: parseMoney($('ot')),
-    ltcg: parseMoney($('ltcg')), oth: parseMoney($('oth')),
+    ltcg: parseMoney($('ltcg')),
+    misc: misc.map(m => ({ t: m.t, v: m.v })),
     status: $('status').value, kids: Number($('kids').value),
     k401: parseMoney($('k401')), ira: parseMoney($('ira')), sep: parseMoney($('sep')),
     qbi: $('qbi').checked,
@@ -543,7 +611,7 @@ function render() {
     t.classList.toggle('sel', code === selected);
     t.setAttribute('aria-selected', code === selected);
     t.dataset.keep = keeps[code];
-    t.dataset.st = stateTax(code, c.taxable0, inp.status);
+    t.dataset.st = stateTax(code, c.stateBase, inp.status);
   }
   $('legMin').textContent = fmt$(min);
   $('legMax').textContent = fmt$(max);
@@ -553,10 +621,10 @@ function render() {
 }
 
 function renderDetail(inp, c, keeps) {
-  const st = stateTax(selected, c.taxable0, inp.status);
+  const st = stateTax(selected, c.stateBase, inp.status);
   const keep = keeps[selected];
   const totalKept = keep + c.pretax;
-  const eff = c.gross > 0 ? (c.fedTax + c.niit + c.fica + c.seTax + st) / c.gross : 0;
+  const eff = c.gross > 0 ? (c.fedTax + c.niit + c.penalty + c.fica + c.seTax + st) / c.gross : 0;
 
   const seg = (v, color) => c.gross > 0 && v > 0.004 * c.gross
     ? `<i style="flex:${(v / c.gross).toFixed(4)};background:${color}"></i>` : '';
@@ -570,8 +638,10 @@ function renderDetail(inp, c, keeps) {
   const fedChips = chip('§1') + (c.qbiDed > 0 ? chip('§199A') : '') + (c.tipsDed > 0 ? chip('§224') : '') + (c.otDed > 0 ? chip('§225') : '');
   rows += `<tr><td>Federal income tax${fedChips}<span class="pct">${c.gross ? fmtPct(c.ordTax / c.gross) : ''}</span></td><td>${minus(c.ordTax)}</td></tr>`;
   if (c.tipsDed + c.otDed > 0) rows += `<tr class="save"><td style="font-size:13px">↳ ${fmt$(c.tipsDed + c.otDed)} of tips/overtime made tax-free${c.tipsDed > 0 ? chip('§224') : ''}${c.otDed > 0 ? chip('§225') : ''}</td><td></td></tr>`;
+  if (c.ssGross > 0) rows += `<tr class="save"><td style="font-size:13px">↳ only ${fmt$(c.ssTaxable)} of ${fmt$(c.ssGross)} Social Security is taxable${chip('§86')}</td><td></td></tr>`;
   if (c.cgTax > 0) rows += `<tr><td>Capital gains tax${chip('§1(h)')}<span class="pct">${fmtPct(c.cgTax / c.gross)}</span></td><td>${minus(c.cgTax)}</td></tr>`;
   if (c.niit > 0) rows += `<tr><td>Net investment income tax${chip('§1411')}</td><td>${minus(c.niit)}</td></tr>`;
+  if (c.penalty > 0) rows += `<tr><td>Early withdrawal penalty${chip('§72(t)')}</td><td>${minus(c.penalty)}</td></tr>`;
   if (c.ctc > 0) rows += `<tr class="credit"><td>Child tax credit${chip('§24')}</td><td>+${fmt$(c.ctc)}</td></tr>`;
   if (c.fica > 0) rows += `<tr><td>FICA (SS + Medicare)${chip('§3101')}<span class="pct">${fmtPct(c.fica / c.gross)}</span></td><td>${minus(c.fica)}</td></tr>`;
   if (c.seTax > 0) rows += `<tr><td>Self-employment tax${chip('§1401')}<span class="pct">${fmtPct(c.seTax / c.gross)}</span></td><td>${minus(c.seTax)}</td></tr>`;
@@ -612,7 +682,10 @@ function renderDetail(inp, c, keeps) {
       <div class="marginal-head">Your federal bracket${chip('§1')}</div>
       <div class="ladder">${ladder}</div>
       <p>Of your <b>next $1,000</b> ${sourceLabel} in ${STATES[selected].n}, you keep <b>${fmt$(Math.max(0, nextKeep))}</b>.</p>
-    </div>`;
+    </div>
+    <p class="code-note"><span class="code" title="Internal Revenue Code">§…</span> The amber
+    highlights are the U.S. tax-code (IRC) sections applied to each line — hover any chip to see
+    what it does.</p>`;
 }
 
 function renderRank(keeps) {
@@ -664,11 +737,50 @@ function renderRank(keeps) {
   });
 })();
 
+/* ---------- miscellaneous income rows ---------- */
+let misc = [];
+function renderMiscRows() {
+  const wrap = $('miscRows');
+  wrap.innerHTML = '';
+  misc.forEach((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'misc-row';
+    const sel = document.createElement('select');
+    sel.setAttribute('aria-label', 'Income type');
+    for (const key in MISC_TYPES) {
+      const o = document.createElement('option');
+      o.value = key;
+      o.textContent = MISC_TYPES[key].label + ' · ' + MISC_TYPES[key].code;
+      if (key === m.t) o.selected = true;
+      sel.appendChild(o);
+    }
+    sel.addEventListener('change', () => { m.t = sel.value; render(); });
+    const amt = document.createElement('input');
+    amt.type = 'text'; amt.inputMode = 'numeric'; amt.autocomplete = 'off';
+    amt.setAttribute('aria-label', 'Amount per year');
+    amt.value = m.v.toLocaleString('en-US');
+    amt.addEventListener('input', () => { m.v = Math.min(50000000, Math.max(0, Number(amt.value.replace(/[^0-9.]/g, '')) || 0)); render(); });
+    amt.addEventListener('blur', () => { amt.value = m.v.toLocaleString('en-US'); });
+    const rm = document.createElement('button');
+    rm.type = 'button'; rm.className = 'rm'; rm.textContent = '×';
+    rm.setAttribute('aria-label', 'Remove this income');
+    rm.addEventListener('click', () => { misc.splice(i, 1); renderMiscRows(); render(); });
+    row.append(sel, amt, rm);
+    wrap.appendChild(row);
+  });
+}
+$('addMisc').addEventListener('click', () => {
+  misc.push({ t: 'interest', v: 0 });
+  renderMiscRows();
+  $('miscRows').querySelector('.misc-row:last-child input').focus();
+});
+
 /* ---------- shareable link ---------- */
 function writeHash() {
   const i = readInputs();
   const parts = ['w2=' + i.w2, 'se=' + i.se, 'fs=' + i.status, 'k=' + i.kids, 'st=' + selected];
-  ['tips', 'ot', 'ltcg', 'oth', 'k401', 'ira', 'sep'].forEach(key => { if (i[key]) parts.push(key + '=' + i[key]); });
+  ['tips', 'ot', 'ltcg', 'k401', 'ira', 'sep'].forEach(key => { if (i[key]) parts.push(key + '=' + i[key]); });
+  if (i.misc.length) parts.push('misc=' + i.misc.map(m => m.t + ':' + m.v).join(','));
   if (!i.qbi) parts.push('qbi=0');
   return '#' + parts.join('&');
 }
@@ -678,8 +790,15 @@ function readHash() {
   const setMoney = (id, key) => { if (p.has(key)) $(id).value = (Number(p.get(key)) || 0).toLocaleString('en-US'); };
   setMoney('w2', 'w2'); setMoney('se', 'se'); setMoney('k401', 'k401');
   setMoney('ira', 'ira'); setMoney('sep', 'sep');
-  setMoney('tips', 'tips'); setMoney('ot', 'ot'); setMoney('ltcg', 'ltcg'); setMoney('oth', 'oth');
-  if (['tips', 'ot', 'ltcg', 'oth'].some(k => Number(p.get(k)))) $('more').open = true;
+  setMoney('tips', 'tips'); setMoney('ot', 'ot'); setMoney('ltcg', 'ltcg');
+  if (p.has('misc')) {
+    misc = p.get('misc').split(',').map(pair => {
+      const [t, v] = pair.split(':');
+      return MISC_TYPES[t] ? { t, v: Math.max(0, Number(v) || 0) } : null;
+    }).filter(Boolean);
+  }
+  if (Number(p.get('oth'))) misc.push({ t: 'interest', v: Number(p.get('oth')) });  // legacy links
+  if (misc.length || ['tips', 'ot', 'ltcg'].some(k => Number(p.get(k)))) $('more').open = true;
   if (p.has('fs') && ['single', 'mfj', 'hoh'].includes(p.get('fs'))) $('status').value = p.get('fs');
   if (p.has('k')) $('kids').value = Math.min(5, Math.max(0, Number(p.get('k')) || 0));
   if (p.get('qbi') === '0') $('qbi').checked = false;
@@ -693,7 +812,7 @@ $('share').addEventListener('click', () => {
 });
 
 /* ---------- wire inputs ---------- */
-['w2', 'se', 'tips', 'ot', 'ltcg', 'oth', 'k401', 'ira', 'sep'].forEach(id => {
+['w2', 'se', 'tips', 'ot', 'ltcg', 'k401', 'ira', 'sep'].forEach(id => {
   $(id).addEventListener('input', render);
   $(id).addEventListener('blur', () => { $(id).value = parseMoney($(id)).toLocaleString('en-US'); });
 });
@@ -705,5 +824,6 @@ document.querySelector('.rank-cols').addEventListener('click', e => {
 });
 
 readHash();
+renderMiscRows();
 render();
 </script>
