@@ -159,7 +159,7 @@
   .money { display: flex; gap: 6px; }
   .money input { flex: 1; min-width: 0; }
   .money .unit {
-    flex: 0 0 auto; width: 82px; padding: 9px 4px; cursor: pointer;
+    flex: 0 0 auto; width: 108px; padding: 9px 4px; cursor: pointer;
     border: 1px solid var(--hairline); border-radius: 8px;
     background: var(--page); color: var(--ink-2);
     font: 600 12px/1.2 system-ui, sans-serif;
@@ -377,9 +377,8 @@
     </div>
   </div>
   <h1>What do you actually <em>keep</em>, state by state?</h1>
-  <p class="sub">W-2 salary, 1099 self-employment, tips, overtime, investments — see your real
-  after-tax income in every state, the exact tax-code sections applied, and how retirement
-  contributions change the picture.</p>
+  <p class="sub">Any income mix — salary, 1099, tips, overtime, investments — see what you
+  actually keep in every state, with the exact tax codes applied.</p>
 
   <div class="tabs" role="tablist" aria-label="Sections">
     <button class="tab on" id="tabCalc" role="tab" aria-selected="true">Take-home map</button>
@@ -399,7 +398,7 @@
         <div class="money">
           <input id="w2" type="text" inputmode="numeric" value="85,000" autocomplete="off">
           <select class="unit" data-for="w2" aria-label="W-2 wages entered per">
-            <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+            <option value="1">/ year</option><option value="12">/ monthly</option><option value="26">/ bi-weekly</option>
           </select>
         </div>
         <div class="hint">Gross salary before withholding</div>
@@ -409,7 +408,7 @@
         <div class="money">
           <input id="se" type="text" inputmode="numeric" value="15,000" autocomplete="off">
           <select class="unit" data-for="se" aria-label="1099 income entered per">
-            <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+            <option value="1">/ year</option><option value="12">/ monthly</option><option value="26">/ bi-weekly</option>
           </select>
         </div>
         <div class="hint">Self-employment profit after expenses</div>
@@ -439,7 +438,7 @@
           <div class="money">
             <input id="bonus" type="text" inputmode="numeric" value="0" autocomplete="off">
             <select class="unit" data-for="bonus" aria-label="Bonus entered per">
-              <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+              <option value="1">/ year</option><option value="12">/ monthly</option><option value="26">/ bi-weekly</option>
             </select>
           </div>
           <div class="hint">Incl. RSU vests — taxed as regular wages (22% is only withholding)</div>
@@ -449,7 +448,7 @@
           <div class="money">
             <input id="tips" type="text" inputmode="numeric" value="0" autocomplete="off">
             <select class="unit" data-for="tips" aria-label="Tips entered per">
-              <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+              <option value="1">/ year</option><option value="12">/ monthly</option><option value="26">/ bi-weekly</option>
             </select>
           </div>
           <div class="hint" id="hintTips">Up to $25,000 federal-tax-free · §224</div>
@@ -459,7 +458,7 @@
           <div class="money">
             <input id="ot" type="text" inputmode="numeric" value="0" autocomplete="off">
             <select class="unit" data-for="ot" aria-label="Overtime premium entered per">
-              <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+              <option value="1">/ year</option><option value="12">/ monthly</option><option value="26">/ bi-weekly</option>
             </select>
           </div>
           <div class="hint" id="hintOt">The extra "half" of time-and-a-half · §225</div>
@@ -485,7 +484,7 @@
           <div class="money">
             <input id="k401" type="text" inputmode="numeric" value="0" autocomplete="off">
             <select class="unit" data-for="k401" aria-label="401(k) deferral entered per">
-              <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+              <option value="1">/ year</option><option value="12">/ monthly</option><option value="26">/ bi-weekly</option>
             </select>
           </div>
           <div class="hint" id="hintK401">Pre-tax, max $23,500/yr · §402(g)</div>
@@ -495,7 +494,7 @@
           <div class="money">
             <input id="ira" type="text" inputmode="numeric" value="0" autocomplete="off">
             <select class="unit" data-for="ira" aria-label="IRA contribution entered per">
-              <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+              <option value="1">/ year</option><option value="12">/ monthly</option><option value="26">/ bi-weekly</option>
             </select>
           </div>
           <div class="hint" id="hintIra">Max $7,000/yr · §219</div>
@@ -505,7 +504,7 @@
           <div class="money">
             <input id="sep" type="text" inputmode="numeric" value="0" autocomplete="off">
             <select class="unit" data-for="sep" aria-label="SEP contribution entered per">
-              <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+              <option value="1">/ year</option><option value="12">/ monthly</option><option value="26">/ bi-weekly</option>
             </select>
           </div>
           <div class="hint">1099 only, ≤25% of net · §408(k)</div>
@@ -1362,7 +1361,7 @@ $('sideList').addEventListener('click', e => {
     $('se').value = Math.round(avg * 12 / units.se).toLocaleString('en-US');
     target = $('se');
     label = '<b>1099 net income</b>';
-    amountTxt = { 1: fmt$(avg * 12) + ' / yr', 12: fmt$(avg) + ' / mo', 26: fmt$(Math.round(avg * 12 / 26)) + ' / bi-wk' }[units.se];
+    amountTxt = { 1: fmt$(avg * 12) + ' / year', 12: fmt$(avg) + ' / monthly', 26: fmt$(Math.round(avg * 12 / 26)) + ' / bi-weekly' }[units.se];
   }
   render();
 
