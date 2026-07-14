@@ -1,5 +1,26 @@
 # IdeaBank
 
+## TakeHome — 미국 세후 소득 계산기 (배포 준비 완료)
+
+`docs/` 폴더에 배포용 사이트가 있습니다 (SEO 메타태그·구조화 데이터·robots.txt·sitemap.xml 포함).
+
+**GitHub Pages로 공개하는 법** (이 브랜치를 main에 머지한 뒤):
+
+1. GitHub 저장소 → **Settings → Pages**
+2. Source: **Deploy from a branch** → Branch: `main`, Folder: `/docs` → Save
+3. 몇 분 뒤 `https://danieldongjunlee-cell.github.io/IdeaBank/` 에서 공개됩니다.
+
+**검색 노출을 위해 배포 직후 할 일:**
+
+1. [Google Search Console](https://search.google.com/search-console)에 사이트 등록 → 소유권 확인 → `sitemap.xml` 제출 → URL 검사에서 "색인 생성 요청"
+2. [Bing Webmaster Tools](https://www.bing.com/webmasters)에도 동일하게 등록
+3. `prototype/takehome-map.html`과 `docs/index.html`의 `AFFILIATES` 객체에 실제 제휴 링크를 넣기 (현재는 자리표시자)
+4. 커스텀 도메인(예: takehome.tax 같은)을 쓰면 신뢰도·클릭률·순위에 모두 유리합니다 — Pages 설정에서 연결 후 `canonical`/`sitemap`/`robots`의 URL을 교체하세요.
+
+순위는 색인 시간·콘텐츠·백링크에 따라 올라갑니다. 페이지 내부(on-page) SEO는 모두 적용되어 있습니다.
+
+---
+
 지금까지 Claude와 나눈 대화에서 **"내가 만들고 싶어 했거나 필요로 했던"** 프로그램·서비스·도구의 흔적을 발굴하고, 압축 정리한 뒤, 전문가 컨설팅까지 이어가는 파이프라인입니다.
 
 ## 왜 이런 구조인가?
