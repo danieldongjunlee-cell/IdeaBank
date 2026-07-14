@@ -211,8 +211,9 @@
 <div class="wrap">
   <div class="eyebrow">TakeHome · Prototype <span class="badge">Tax year 2025</span></div>
   <h1>What do you actually <em>keep</em>, state by state?</h1>
-  <p class="sub">W-2 salary, 1099 self-employment, or both — see your real after-tax income in
-  every state, the exact tax-code sections applied, and how retirement contributions change the picture.</p>
+  <p class="sub">W-2 salary, 1099 self-employment, tips, overtime, investments — see your real
+  after-tax income in every state, the exact tax-code sections applied, and how retirement
+  contributions change the picture.</p>
 
   <div class="panel">
     <div class="panel-head">
@@ -247,6 +248,31 @@
         <div class="hint">Child tax credit, $2,200 each</div>
       </div>
     </div>
+    <details id="more">
+      <summary>More income — tips, overtime &amp; investments</summary>
+      <div class="inputs">
+        <div class="field">
+          <label for="tips">Tips received / yr</label>
+          <input id="tips" type="text" inputmode="numeric" value="0" autocomplete="off">
+          <div class="hint">Up to $25,000 federal-tax-free · §224</div>
+        </div>
+        <div class="field">
+          <label for="ot">Overtime premium / yr</label>
+          <input id="ot" type="text" inputmode="numeric" value="0" autocomplete="off">
+          <div class="hint">The extra "half" of time-and-a-half · §225</div>
+        </div>
+        <div class="field">
+          <label for="ltcg">Long-term gains &amp; dividends</label>
+          <input id="ltcg" type="text" inputmode="numeric" value="0" autocomplete="off">
+          <div class="hint">0 / 15 / 20% rates + NIIT · §1(h)</div>
+        </div>
+        <div class="field">
+          <label for="oth">Other ordinary income</label>
+          <input id="oth" type="text" inputmode="numeric" value="0" autocomplete="off">
+          <div class="hint">Interest, rental, unemployment…</div>
+        </div>
+      </div>
+    </details>
     <details id="adv">
       <summary>Advanced accuracy — retirement &amp; QBI</summary>
       <div class="inputs">
@@ -309,7 +335,11 @@
   Social Security wage base coordinated across W-2 and 1099 income, additional Medicare tax,
   child tax credit with phase-out (§24), elective deferrals (§402(g)), IRA deduction without
   income phase-outs (§219), SEP contributions (§408(k)), and an unconditional 20% QBI deduction
-  (§199A) that ignores SSTB phase-outs. State income tax uses simplified 2025 rate schedules on
+  (§199A) that ignores SSTB phase-outs. Tips and overtime premium stay subject to FICA but get the
+  2025–2028 federal deductions (§224, §225) with their $150k/$300k AGI phase-out — assuming a
+  qualifying occupation and FLSA-qualifying overtime. Long-term gains and qualified dividends use
+  stacked 0/15/20% rates (§1(h)) plus the 3.8% NIIT (§1411), with no loss netting. State income
+  tax uses simplified 2025 rate schedules on
   federal taxable income before QBI; it excludes local/city taxes (e.g. NYC, MD counties) and
   state-specific deductions or credits. Washington taxes only capital gains and New Hampshire
   only investment income, so both show as no wage tax.</p>
@@ -326,6 +356,11 @@ const FED = {
   hoh:    [[0,.10],[17000,.12],[64850,.22],[103350,.24],[197300,.32],[250500,.35],[626350,.37]],
 };
 const STD = { single: 15750, mfj: 31500, hoh: 23625 };
+const CG = {
+  single: [[0,0],[48350,.15],[533400,.20]],
+  mfj:    [[0,0],[96700,.15],[600050,.20]],
+  hoh:    [[0,0],[64750,.15],[566700,.20]],
+};
 const SS_WAGE_BASE = 176100;
 const CTC_PER_CHILD = 2200;
 
@@ -395,29 +430,50 @@ function bracketIndex(income, brackets) {
   return idx;
 }
 
+/* long-term gains stack on top of ordinary income: tax the slice [O, O+P] at CG rates */
+function stackedCG(O, P, brackets) {
+  let tax = 0;
+  for (let i = 0; i < brackets.length; i++) {
+    const lo = Math.max(brackets[i][0], O);
+    const hi = Math.min(i + 1 < brackets.length ? brackets[i + 1][0] : Infinity, O + P);
+    if (hi > lo) tax += (hi - lo) * brackets[i][1];
+  }
+  return tax;
+}
+
 function calc(inp) {
-  const k401 = Math.min(inp.k401, inp.w2, 23500);
+  const wages = inp.w2 + inp.tips + inp.ot;          // tips & OT premium are W-2 wages for FICA
+  const k401 = Math.min(inp.k401, wages, 23500);
   const sep = Math.min(inp.sep, 70000, 0.25 * inp.se);
   const ira = Math.min(inp.ira, 7000);
   const seBase = inp.se * 0.9235;
-  const seTax = Math.min(seBase, Math.max(0, SS_WAGE_BASE - inp.w2)) * 0.124 + seBase * 0.029;
+  const seTax = Math.min(seBase, Math.max(0, SS_WAGE_BASE - wages)) * 0.124 + seBase * 0.029;
   const addlThresh = inp.status === 'mfj' ? 250000 : 200000;
-  const addlMedicare = Math.max(0, inp.w2 + seBase - addlThresh) * 0.009;
-  const fica = Math.min(inp.w2, SS_WAGE_BASE) * 0.062 + inp.w2 * 0.0145 + addlMedicare;
-  const agi = inp.w2 - k401 + inp.se - seTax / 2 - sep - ira;
-  const taxable0 = Math.max(0, agi - STD[inp.status]);          // pre-QBI; states use this
+  const addlMedicare = Math.max(0, wages + seBase - addlThresh) * 0.009;
+  const fica = Math.min(wages, SS_WAGE_BASE) * 0.062 + wages * 0.0145 + addlMedicare;
+  const agi = wages - k401 + inp.se - seTax / 2 - sep - ira + inp.ltcg + inp.oth;
+  const taxable0 = Math.max(0, agi - STD[inp.status]);          // pre-QBI/tips/OT; states use this
   const qbiBase = Math.max(0, inp.se - seTax / 2 - sep);
   const qbiDed = inp.qbi ? Math.min(0.2 * qbiBase, 0.2 * taxable0) : 0;
-  const fedTaxable = Math.max(0, taxable0 - qbiDed);
-  const fedBefore = bracketTax(fedTaxable, FED[inp.status]);
+  /* §224 tips & §225 overtime deductions (2025–2028), phased out $100 per $1,000 of AGI over threshold */
+  const toPhase = 100 * Math.ceil(Math.max(0, agi - (inp.status === 'mfj' ? 300000 : 150000)) / 1000);
+  const tipsDed = Math.max(0, Math.min(inp.tips, 25000) - toPhase);
+  const otDed = Math.max(0, Math.min(inp.ot, inp.status === 'mfj' ? 25000 : 12500) - toPhase);
+  const fedTaxable = Math.max(0, taxable0 - qbiDed - tipsDed - otDed);
+  const cgPart = Math.min(inp.ltcg, fedTaxable);
+  const ordTaxable = fedTaxable - cgPart;
+  const ordTax = bracketTax(ordTaxable, FED[inp.status]);
+  const cgTax = stackedCG(ordTaxable, cgPart, CG[inp.status]);
+  const niit = 0.038 * Math.min(inp.ltcg, Math.max(0, agi - addlThresh));
+  const fedBefore = ordTax + cgTax;
   let ctc = inp.kids * CTC_PER_CHILD;
   const phaseStart = inp.status === 'mfj' ? 400000 : 200000;
   if (agi > phaseStart) ctc = Math.max(0, ctc - Math.ceil((agi - phaseStart) / 1000) * 50);
   ctc = Math.min(ctc, fedBefore);
   return {
-    gross: inp.w2 + inp.se, pretax: k401 + sep + ira, k401, sep, ira,
-    fedBefore, ctc, fedTax: fedBefore - ctc, fica, seTax,
-    taxable0, fedTaxable, qbiDed,
+    gross: wages + inp.se + inp.ltcg + inp.oth, pretax: k401 + sep + ira, k401, sep, ira,
+    ordTax, cgTax, niit, fedBefore, ctc, fedTax: fedBefore - ctc, fica, seTax,
+    taxable0, fedTaxable, ordTaxable, qbiDed, tipsDed, otDed,
   };
 }
 
@@ -429,7 +485,7 @@ function stateTax(code, taxable, status) {
 }
 
 function keepIn(code, c, status) {
-  return c.gross - c.fedTax - c.fica - c.seTax - c.pretax - stateTax(code, c.taxable0, status);
+  return c.gross - c.fedTax - c.niit - c.fica - c.seTax - c.pretax - stateTax(code, c.taxable0, status);
 }
 
 /* ---------- ui ---------- */
@@ -448,6 +504,10 @@ const CODE_HELP = {
   '§402(g)': 'IRC §402(g) — 401(k) elective deferral limit',
   '§219': 'IRC §219 — traditional IRA deduction',
   '§408(k)': 'IRC §408(k) — SEP-IRA employer contribution',
+  '§224': 'IRC §224 — "no tax on tips" deduction, up to $25,000 (2025–2028)',
+  '§225': 'IRC §225 — "no tax on overtime" deduction, up to $12,500 / $25,000 MFJ (2025–2028)',
+  '§1(h)': 'IRC §1(h) — preferential 0/15/20% rates on long-term capital gains & qualified dividends',
+  '§1411': 'IRC §1411 — 3.8% net investment income tax',
 };
 const chip = c => `<span class="code" title="${CODE_HELP[c]}">${c}</span>`;
 
@@ -459,6 +519,8 @@ function parseMoney(el) {
 function readInputs() {
   return {
     w2: parseMoney($('w2')), se: parseMoney($('se')),
+    tips: parseMoney($('tips')), ot: parseMoney($('ot')),
+    ltcg: parseMoney($('ltcg')), oth: parseMoney($('oth')),
     status: $('status').value, kids: Number($('kids').value),
     k401: parseMoney($('k401')), ira: parseMoney($('ira')), sep: parseMoney($('sep')),
     qbi: $('qbi').checked,
@@ -494,7 +556,7 @@ function renderDetail(inp, c, keeps) {
   const st = stateTax(selected, c.taxable0, inp.status);
   const keep = keeps[selected];
   const totalKept = keep + c.pretax;
-  const eff = c.gross > 0 ? (c.fedTax + c.fica + c.seTax + st) / c.gross : 0;
+  const eff = c.gross > 0 ? (c.fedTax + c.niit + c.fica + c.seTax + st) / c.gross : 0;
 
   const seg = (v, color) => c.gross > 0 && v > 0.004 * c.gross
     ? `<i style="flex:${(v / c.gross).toFixed(4)};background:${color}"></i>` : '';
@@ -505,7 +567,11 @@ function renderDetail(inp, c, keeps) {
     const codes = [c.k401 ? '§402(g)' : '', c.ira ? '§219' : '', c.sep ? '§408(k)' : ''].filter(Boolean).map(chip).join('');
     rows += `<tr class="save"><td>Pre-tax savings (still yours)${codes}</td><td>${minus(c.pretax)}</td></tr>`;
   }
-  rows += `<tr><td>Federal income tax${chip('§1')}${c.qbiDed > 0 ? chip('§199A') : ''}<span class="pct">${c.gross ? fmtPct(c.fedBefore / c.gross) : ''}</span></td><td>${minus(c.fedBefore)}</td></tr>`;
+  const fedChips = chip('§1') + (c.qbiDed > 0 ? chip('§199A') : '') + (c.tipsDed > 0 ? chip('§224') : '') + (c.otDed > 0 ? chip('§225') : '');
+  rows += `<tr><td>Federal income tax${fedChips}<span class="pct">${c.gross ? fmtPct(c.ordTax / c.gross) : ''}</span></td><td>${minus(c.ordTax)}</td></tr>`;
+  if (c.tipsDed + c.otDed > 0) rows += `<tr class="save"><td style="font-size:13px">↳ ${fmt$(c.tipsDed + c.otDed)} of tips/overtime made tax-free${c.tipsDed > 0 ? chip('§224') : ''}${c.otDed > 0 ? chip('§225') : ''}</td><td></td></tr>`;
+  if (c.cgTax > 0) rows += `<tr><td>Capital gains tax${chip('§1(h)')}<span class="pct">${fmtPct(c.cgTax / c.gross)}</span></td><td>${minus(c.cgTax)}</td></tr>`;
+  if (c.niit > 0) rows += `<tr><td>Net investment income tax${chip('§1411')}</td><td>${minus(c.niit)}</td></tr>`;
   if (c.ctc > 0) rows += `<tr class="credit"><td>Child tax credit${chip('§24')}</td><td>+${fmt$(c.ctc)}</td></tr>`;
   if (c.fica > 0) rows += `<tr><td>FICA (SS + Medicare)${chip('§3101')}<span class="pct">${fmtPct(c.fica / c.gross)}</span></td><td>${minus(c.fica)}</td></tr>`;
   if (c.seTax > 0) rows += `<tr><td>Self-employment tax${chip('§1401')}<span class="pct">${fmtPct(c.seTax / c.gross)}</span></td><td>${minus(c.seTax)}</td></tr>`;
@@ -515,12 +581,13 @@ function renderDetail(inp, c, keeps) {
   rows += `<tr class="total"><td>Take-home cash</td><td>${fmt$(keep)}</td></tr>`;
 
   /* marginal: what happens to the next $1,000 earned */
-  const marginalSource = inp.w2 > 0 || inp.se === 0 ? 'w2' : 'se';
+  const marginalSource = inp.w2 > 0 ? 'w2' : inp.tips > 0 ? 'tips' : inp.se > 0 ? 'se' : 'w2';
+  const sourceLabel = { w2: 'of W-2 pay', tips: 'of tips', se: 'of 1099 income' }[marginalSource];
   const inpPlus = Object.assign({}, inp, { [marginalSource]: inp[marginalSource] + 1000 });
   const cPlus = calc(inpPlus);
   const keepPlus = keepIn(selected, cPlus, inp.status) + cPlus.pretax;
   const nextKeep = keepPlus - totalKept;
-  const bIdx = bracketIndex(c.fedTaxable, FED[inp.status]);
+  const bIdx = bracketIndex(c.ordTaxable, FED[inp.status]);
   const ladder = FED[inp.status].map((b, i) =>
     `<span class="rung ${i < bIdx ? 'past' : i === bIdx ? 'now' : ''}">${Math.round(b[1] * 100)}%</span>`).join('');
 
@@ -530,7 +597,7 @@ function renderDetail(inp, c, keeps) {
     <p class="hero-sub"><b>${fmt$(keep / 12)}</b> per month · effective tax rate <b>${fmtPct(eff)}</b></p>
     ${c.pretax > 0 ? `<p class="kept-note">+ ${fmt$(c.pretax)} saved pre-tax → you keep ${c.gross ? fmtPct(totalKept / c.gross) : '—'} of gross</p>` : '<p class="kept-note" style="display:none"></p>'}
     <div class="bar" role="img" aria-label="Composition of gross income">
-      ${seg(c.fedTax, 'var(--seg-fed)')}${seg(st, 'var(--seg-state)')}${seg(c.fica, 'var(--seg-fica)')}${seg(c.seTax, 'var(--seg-se)')}${seg(c.pretax, 'var(--tile-empty)')}${seg(keep, 'var(--seg-keep)')}
+      ${seg(c.fedTax + c.niit, 'var(--seg-fed)')}${seg(st, 'var(--seg-state)')}${seg(c.fica, 'var(--seg-fica)')}${seg(c.seTax, 'var(--seg-se)')}${seg(c.pretax, 'var(--tile-empty)')}${seg(keep, 'var(--seg-keep)')}
     </div>
     <div class="bar-legend">
       <span><em style="background:var(--seg-fed)"></em>Federal</span>
@@ -544,7 +611,7 @@ function renderDetail(inp, c, keeps) {
     <div class="marginal">
       <div class="marginal-head">Your federal bracket${chip('§1')}</div>
       <div class="ladder">${ladder}</div>
-      <p>Of your <b>next $1,000</b> ${marginalSource === 'w2' ? 'of W-2 pay' : 'of 1099 income'} in ${STATES[selected].n}, you keep <b>${fmt$(Math.max(0, nextKeep))}</b>.</p>
+      <p>Of your <b>next $1,000</b> ${sourceLabel} in ${STATES[selected].n}, you keep <b>${fmt$(Math.max(0, nextKeep))}</b>.</p>
     </div>`;
 }
 
@@ -601,9 +668,7 @@ function renderRank(keeps) {
 function writeHash() {
   const i = readInputs();
   const parts = ['w2=' + i.w2, 'se=' + i.se, 'fs=' + i.status, 'k=' + i.kids, 'st=' + selected];
-  if (i.k401) parts.push('k401=' + i.k401);
-  if (i.ira) parts.push('ira=' + i.ira);
-  if (i.sep) parts.push('sep=' + i.sep);
+  ['tips', 'ot', 'ltcg', 'oth', 'k401', 'ira', 'sep'].forEach(key => { if (i[key]) parts.push(key + '=' + i[key]); });
   if (!i.qbi) parts.push('qbi=0');
   return '#' + parts.join('&');
 }
@@ -613,6 +678,8 @@ function readHash() {
   const setMoney = (id, key) => { if (p.has(key)) $(id).value = (Number(p.get(key)) || 0).toLocaleString('en-US'); };
   setMoney('w2', 'w2'); setMoney('se', 'se'); setMoney('k401', 'k401');
   setMoney('ira', 'ira'); setMoney('sep', 'sep');
+  setMoney('tips', 'tips'); setMoney('ot', 'ot'); setMoney('ltcg', 'ltcg'); setMoney('oth', 'oth');
+  if (['tips', 'ot', 'ltcg', 'oth'].some(k => Number(p.get(k)))) $('more').open = true;
   if (p.has('fs') && ['single', 'mfj', 'hoh'].includes(p.get('fs'))) $('status').value = p.get('fs');
   if (p.has('k')) $('kids').value = Math.min(5, Math.max(0, Number(p.get('k')) || 0));
   if (p.get('qbi') === '0') $('qbi').checked = false;
@@ -626,7 +693,7 @@ $('share').addEventListener('click', () => {
 });
 
 /* ---------- wire inputs ---------- */
-['w2', 'se', 'k401', 'ira', 'sep'].forEach(id => {
+['w2', 'se', 'tips', 'ot', 'ltcg', 'oth', 'k401', 'ira', 'sep'].forEach(id => {
   $(id).addEventListener('input', render);
   $(id).addEventListener('blur', () => { $(id).value = parseMoney($(id)).toLocaleString('en-US'); });
 });
