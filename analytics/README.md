@@ -18,9 +18,22 @@ Google Sheet you own. Zero cost, no third-party signup.
 
 ## What gets recorded
 
-One row per event — `scenario` (3 s after the user stops typing), `share`, `tab`,
-`leave` — containing: timestamp, a random per-visit session id, tax year, selected
-state, and the scenario inputs as JSON. No names, emails, IPs*, or accounts.
+One row per event, each with a timestamp, random per-visit session id, tax year, and
+selected state. No names, emails, IPs*, or accounts.
+
+- `scenario` (3 s after the user stops typing) and `leave` — include the full
+  scenario inputs as JSON
+- `click` — lightweight UI log, `detail` column says what: `map:TX`,
+  `affiliate:Open a SEP-IRA`, `hustle:Rideshare driving`, `rank:FL`,
+  `theme:violet`, `panel:more`, `btn:share`…
+- `change` — dropdown/select usage: `taxYear=2024`, `unit:w2=26`, `status=mfj`,
+  `cmpB=NY`…
+- `share`, `tab` — link copies and tab switches
+
+If you deployed an earlier version of the script: paste the new `apps-script.gs`
+over the old code, then **Deploy → Manage deployments → ✏️ Edit → Version: New
+version → Deploy** (the URL stays the same). Start a fresh sheet tab or delete the
+old header row so the new `detail` column lines up.
 
 \* Apps Script does not expose the sender's IP to your code, and nothing else here
 collects it.

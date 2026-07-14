@@ -13,7 +13,7 @@ function doPost(e) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
     if (sheet.getLastRow() === 0) {
-      sheet.appendRow(['received_at', 'session', 'event', 'client_time', 'tax_year', 'state', 'tab', 'inputs_json']);
+      sheet.appendRow(['received_at', 'session', 'event', 'client_time', 'tax_year', 'state', 'tab', 'detail', 'inputs_json']);
     }
     const d = JSON.parse(e.postData.contents);
     sheet.appendRow([
@@ -24,7 +24,8 @@ function doPost(e) {
       Number(d.year) || '',
       String(d.state || '').slice(0, 4),
       String(d.tab || '').slice(0, 10),
-      JSON.stringify(d.inputs || {}).slice(0, 4000),
+      String(d.detail || '').slice(0, 60),
+      d.inputs ? JSON.stringify(d.inputs).slice(0, 4000) : '',
     ]);
     return ContentService.createTextOutput('ok');
   } catch (err) {

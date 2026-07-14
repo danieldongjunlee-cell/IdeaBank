@@ -1468,16 +1468,39 @@ const track = (() => {
     sid = sessionStorage.sid || (sessionStorage.sid = Math.random().toString(36).slice(2) + Date.now().toString(36));
   } catch (e) { /* storage blocked — stay 'anon' */ }
   return (event, extra) => {
-    if (sends++ > 40) return;   // respect free-tier quotas
+    if (sends++ > 150) return;   // respect free-tier quotas
     try {
-      const body = JSON.stringify(Object.assign(
-        { sid, event, at: new Date().toISOString(), year: taxYear, state: selected, inputs: readInputs() }, extra));
+      const payload = Object.assign(
+        { sid, event, at: new Date().toISOString(), year: taxYear, state: selected }, extra);
+      if (event === 'scenario' || event === 'leave') payload.inputs = readInputs();  // clicks stay lightweight
+      const body = JSON.stringify(payload);
       if (!(navigator.sendBeacon && navigator.sendBeacon(ANALYTICS_ENDPOINT, body))) {
         fetch(ANALYTICS_ENDPOINT, { method: 'POST', mode: 'no-cors', keepalive: true, body });
       }
     } catch (e) { /* analytics must never break the app */ }
   };
 })();
+
+/* click & interaction log: which UI elements get used (labels only, no free text) */
+document.addEventListener('click', e => {
+  const c = sel => e.target.closest && e.target.closest(sel);
+  let el;
+  if ((el = c('.tile:not(.spacer)'))) return track('click', { detail: 'map:' + el.textContent.trim() });
+  if ((el = c('.nm-card a'))) return track('click', { detail: 'affiliate:' + el.textContent.trim().slice(0, 30) });
+  if ((el = c('a[data-avg]'))) return track('click', { detail: 'hustle:' + el.dataset.job });
+  if ((el = c('[data-go]'))) return track('click', { detail: 'rank:' + el.dataset.go });
+  if ((el = c('.swatch'))) return track('click', { detail: 'theme:' + el.dataset.accent });
+  if (c('#modeBtn')) return track('click', { detail: 'mode' });
+  if ((el = c('summary'))) return track('click', { detail: 'panel:' + (el.parentElement.id || 'faq') });
+  if ((el = c('button, a')) && el.id) return track('click', { detail: 'btn:' + el.id });
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  const name = el.id
+    || (el.classList.contains('unit') ? 'unit:' + el.dataset.for : '')
+    || (el.closest('.misc-row') ? 'miscType' : '');
+  if (name) track('change', { detail: name + '=' + String(el.value).slice(0, 20) });
+});
 let trackTimer;
 function trackScenario() {
   clearTimeout(trackTimer);
