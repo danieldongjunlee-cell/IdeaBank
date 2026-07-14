@@ -106,15 +106,16 @@
   .tab.on { color: var(--accent-ink); border-bottom-color: var(--accent); }
   .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-  /* ---------- frequency toggle ---------- */
-  .freq { display: inline-flex; border: 1px solid var(--hairline); border-radius: 999px; overflow: hidden; margin-left: auto; }
-  .freq button {
-    border: 0; background: none; cursor: pointer; padding: 6px 12px;
-    font: 600 12px/1.2 system-ui, sans-serif; color: var(--muted);
+  /* ---------- per-field frequency unit ---------- */
+  .money { display: flex; gap: 6px; }
+  .money input { flex: 1; min-width: 0; }
+  .money .unit {
+    flex: 0 0 auto; width: 82px; padding: 9px 4px; cursor: pointer;
+    border: 1px solid var(--hairline); border-radius: 8px;
+    background: var(--page); color: var(--ink-2);
+    font: 600 12px/1.2 system-ui, sans-serif;
   }
-  .freq button + button { border-left: 1px solid var(--hairline); }
-  .freq button.on { background: var(--accent); color: var(--on-accent, #fff); }
-  .freq button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .money .unit:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   /* ---------- side hustle rankings ---------- */
   .panel-head select {
@@ -334,20 +335,27 @@
   <div class="panel">
     <div class="panel-head">
       <span class="panel-title">Your income</span>
-      <span class="freq" role="group" aria-label="Enter amounts per">
-        <button class="on" data-f="1">Yearly</button><button data-f="12">Monthly</button><button data-f="26">Bi-weekly</button>
-      </span>
       <button class="copy-btn" id="share">Copy shareable link</button>
     </div>
     <div class="inputs">
       <div class="field">
-        <label for="w2">W-2 wages / yr</label>
-        <input id="w2" type="text" inputmode="numeric" value="85,000" autocomplete="off">
+        <label for="w2">W-2 wages</label>
+        <div class="money">
+          <input id="w2" type="text" inputmode="numeric" value="85,000" autocomplete="off">
+          <select class="unit" data-for="w2" aria-label="W-2 wages entered per">
+            <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+          </select>
+        </div>
         <div class="hint">Gross salary before withholding</div>
       </div>
       <div class="field">
-        <label for="se">1099 net income / yr</label>
-        <input id="se" type="text" inputmode="numeric" value="15,000" autocomplete="off">
+        <label for="se">1099 net income</label>
+        <div class="money">
+          <input id="se" type="text" inputmode="numeric" value="15,000" autocomplete="off">
+          <select class="unit" data-for="se" aria-label="1099 income entered per">
+            <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+          </select>
+        </div>
         <div class="hint">Self-employment profit after expenses</div>
       </div>
       <div class="field">
@@ -371,13 +379,23 @@
       <summary>More income — tips, overtime &amp; investments</summary>
       <div class="inputs">
         <div class="field">
-          <label for="tips">Tips received / yr</label>
-          <input id="tips" type="text" inputmode="numeric" value="0" autocomplete="off">
+          <label for="tips">Tips received</label>
+          <div class="money">
+            <input id="tips" type="text" inputmode="numeric" value="0" autocomplete="off">
+            <select class="unit" data-for="tips" aria-label="Tips entered per">
+              <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+            </select>
+          </div>
           <div class="hint">Up to $25,000 federal-tax-free · §224</div>
         </div>
         <div class="field">
-          <label for="ot">Overtime premium / yr</label>
-          <input id="ot" type="text" inputmode="numeric" value="0" autocomplete="off">
+          <label for="ot">Overtime premium</label>
+          <div class="money">
+            <input id="ot" type="text" inputmode="numeric" value="0" autocomplete="off">
+            <select class="unit" data-for="ot" aria-label="Overtime premium entered per">
+              <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+            </select>
+          </div>
           <div class="hint">The extra "half" of time-and-a-half · §225</div>
         </div>
         <div class="field">
@@ -397,18 +415,33 @@
       <summary>Advanced accuracy — retirement &amp; QBI</summary>
       <div class="inputs">
         <div class="field">
-          <label for="k401">401(k) deferral / yr</label>
-          <input id="k401" type="text" inputmode="numeric" value="0" autocomplete="off">
-          <div class="hint">Pre-tax, max $23,500 · §402(g)</div>
+          <label for="k401">401(k) deferral</label>
+          <div class="money">
+            <input id="k401" type="text" inputmode="numeric" value="0" autocomplete="off">
+            <select class="unit" data-for="k401" aria-label="401(k) deferral entered per">
+              <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+            </select>
+          </div>
+          <div class="hint">Pre-tax, max $23,500/yr · §402(g)</div>
         </div>
         <div class="field">
-          <label for="ira">Traditional IRA / yr</label>
-          <input id="ira" type="text" inputmode="numeric" value="0" autocomplete="off">
-          <div class="hint">Max $7,000 · §219</div>
+          <label for="ira">Traditional IRA</label>
+          <div class="money">
+            <input id="ira" type="text" inputmode="numeric" value="0" autocomplete="off">
+            <select class="unit" data-for="ira" aria-label="IRA contribution entered per">
+              <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+            </select>
+          </div>
+          <div class="hint">Max $7,000/yr · §219</div>
         </div>
         <div class="field">
           <label for="sep">SEP-IRA / Solo 401(k)</label>
-          <input id="sep" type="text" inputmode="numeric" value="0" autocomplete="off">
+          <div class="money">
+            <input id="sep" type="text" inputmode="numeric" value="0" autocomplete="off">
+            <select class="unit" data-for="sep" aria-label="SEP contribution entered per">
+              <option value="1">/ yr</option><option value="12">/ mo</option><option value="26">/ bi-wk</option>
+            </select>
+          </div>
           <div class="hint">1099 only, ≤25% of net · §408(k)</div>
         </div>
         <div class="field">
@@ -769,28 +802,27 @@ function parseMoney(el) {
   return Math.min(v, 50000000);
 }
 
-/* pay frequency: recurring income fields are entered per year, month, or bi-weekly paycheck */
-let freq = 1;
-const FREQ_SUFFIX = { 1: '/ yr', 12: '/ mo', 26: '/ paycheck' };
-const FREQ_FIELDS = { w2: 'W-2 wages', se: '1099 net income', tips: 'Tips received', ot: 'Overtime premium' };
-
-function setFreq(f) {
-  freq = f;
-  document.querySelectorAll('.freq button').forEach(b => b.classList.toggle('on', Number(b.dataset.f) === f));
-  for (const id in FREQ_FIELDS) {
-    document.querySelector(`label[for=${id}]`).textContent = FREQ_FIELDS[id] + ' ' + FREQ_SUFFIX[f];
-  }
+/* per-field pay frequency: each amount can be entered per year, month, or bi-weekly paycheck */
+const UNIT_FIELDS = ['w2', 'se', 'tips', 'ot', 'k401', 'ira', 'sep'];
+const units = { w2: 1, se: 1, tips: 1, ot: 1, k401: 1, ira: 1, sep: 1 };
+function setUnit(id, u) {
+  units[id] = u;
+  document.querySelector(`.unit[data-for=${id}]`).value = String(u);
 }
-document.querySelectorAll('.freq button').forEach(b => b.addEventListener('click', () => { setFreq(Number(b.dataset.f)); render(); }));
+document.querySelectorAll('.unit').forEach(sel => sel.addEventListener('change', () => {
+  units[sel.dataset.for] = Number(sel.value);
+  render();
+}));
 
 function readInputs() {
+  const money = id => parseMoney($(id)) * units[id];
   return {
-    w2: parseMoney($('w2')) * freq, se: parseMoney($('se')) * freq,
-    tips: parseMoney($('tips')) * freq, ot: parseMoney($('ot')) * freq,
+    w2: money('w2'), se: money('se'),
+    tips: money('tips'), ot: money('ot'),
     ltcg: parseMoney($('ltcg')),
     misc: misc.map(m => ({ t: m.t, v: m.v })),
     status: $('status').value, kids: Number($('kids').value),
-    k401: parseMoney($('k401')), ira: parseMoney($('ira')), sep: parseMoney($('sep')),
+    k401: money('k401'), ira: money('ira'), sep: money('sep'),
     qbi: $('qbi').checked,
   };
 }
@@ -1075,8 +1107,8 @@ function writeHash() {
   /* store raw field values (as entered) plus the frequency, so links restore exactly */
   const raw = id => parseMoney($(id));
   const parts = ['w2=' + raw('w2'), 'se=' + raw('se'), 'fs=' + $('status').value, 'k=' + $('kids').value, 'st=' + selected];
-  if (freq !== 1) parts.push('freq=' + freq);
   ['tips', 'ot', 'ltcg', 'k401', 'ira', 'sep'].forEach(key => { if (raw(key)) parts.push(key + '=' + raw(key)); });
+  UNIT_FIELDS.forEach(id => { if (units[id] !== 1) parts.push(id + 'u=' + units[id]); });
   if (misc.length) parts.push('misc=' + misc.map(m => m.t + ':' + m.v).join(','));
   if (!$('qbi').checked) parts.push('qbi=0');
   return '#' + parts.join('&');
@@ -1084,7 +1116,13 @@ function writeHash() {
 function readHash() {
   if (!location.hash) return;
   const p = new URLSearchParams(location.hash.slice(1));
-  if ([12, 26].includes(Number(p.get('freq')))) setFreq(Number(p.get('freq')));
+  UNIT_FIELDS.forEach(id => {
+    if ([12, 26].includes(Number(p.get(id + 'u')))) setUnit(id, Number(p.get(id + 'u')));
+  });
+  /* legacy links used one global freq for the income fields */
+  if ([12, 26].includes(Number(p.get('freq')))) {
+    ['w2', 'se', 'tips', 'ot'].forEach(id => setUnit(id, Number(p.get('freq'))));
+  }
   const setMoney = (id, key) => { if (p.has(key)) $(id).value = (Number(p.get(key)) || 0).toLocaleString('en-US'); };
   setMoney('w2', 'w2'); setMoney('se', 'se'); setMoney('k401', 'k401');
   setMoney('ira', 'ira'); setMoney('sep', 'sep');
@@ -1187,7 +1225,7 @@ $('sideList').addEventListener('click', e => {
   const a = e.target.closest('a[data-avg]');
   if (!a) return;
   e.preventDefault();
-  $('se').value = Math.round(Number(a.dataset.avg) * 12 / freq).toLocaleString('en-US');
+  $('se').value = Math.round(Number(a.dataset.avg) * 12 / units.se).toLocaleString('en-US');
   selected = $('sideState').value;
   switchTab('calc');
   render();
