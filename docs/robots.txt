@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://danieldongjunlee-cell.github.io/IdeaBank/sitemap.xml
+Sitemap: https://taxcalculatorapp.com/sitemap.xml
